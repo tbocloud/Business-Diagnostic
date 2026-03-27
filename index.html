@@ -1529,13 +1529,14 @@ function cycleLoadingMsg() {
 async function callAPI() {
   const prompt = buildPrompt();
   try {
-    const res = await fetch('/api/analyze.php', {
+    const res = await fetch('api/analyze.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, scores, answers })   // scores + answers saved to DB
+      body: JSON.stringify({ prompt, scores, answers })
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    if (data.submissionId) submissionId = data.submissionId;
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
     renderResults(data);
   } catch (e) {
     console.warn('API error, using fallback:', e.message);
@@ -1937,7 +1938,7 @@ async function sendToWhatsApp() {
 
   // ── Save phone number to DB ───────────────────────
   try {
-    await fetch('/api/save-phone.php', {
+    await fetch('api/save-phone.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ submissionId, phone: '+' + fullPhone })

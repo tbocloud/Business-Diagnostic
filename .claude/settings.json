@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/Business-Diagnostic/api/analyze.php)",
+      "Bash(curl -s -X POST http://localhost/Business-Diagnostic/api/analyze.php -H \"Content-Type: application/json\" -d '{\"\"prompt\"\":\"\"test\"\",\"\"scores\"\":{\"\"operations\"\":50},\"\"answers\"\":{\"\"companyName\"\":\"\"Test\"\"}}')",
+      "Bash(curl -s -X POST http://localhost/Business-Diagnostic/api/analyze.php -H \"Content-Type: application/json\" -d '{\"\"prompt\"\":\"\"test\"\",\"\"scores\"\":{\"\"operations\"\":50,\"\"finance\"\":40,\"\"marketing\"\":30,\"\"digitalPresence\"\":20,\"\"aiReadiness\"\":10},\"\"answers\"\":{\"\"companyName\"\":\"\"Test Co\"\",\"\"industry\"\":\"\"retail\"\",\"\"age\"\":\"\"growing\"\",\"\"btype\"\":\"\"service\"\",\"\"teamSize\"\":\"\"small\"\"}}')",
+      "Bash(mysql -u root Saniga -e \"SELECT id, company_name, score_average, created_at FROM submissions ORDER BY id DESC LIMIT 3;\")",
+      "Bash(mysql -h 127.0.0.1 -u root Saniga -e \"SELECT id, company_name, score_average, overall_rating, created_at FROM submissions ORDER BY id DESC LIMIT 3;\")",
+      "Bash(mysql -h 127.0.0.1 -u root --ssl-mode=DISABLED Saniga -e \"SELECT id, company_name, score_average, overall_rating, created_at FROM submissions ORDER BY id DESC LIMIT 3;\")",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -h 127.0.0.1 -u root Saniga -e \"SELECT id, company_name, score_average, overall_rating, created_at FROM submissions ORDER BY id DESC LIMIT 3;\")"
+    ]
+  }
+}

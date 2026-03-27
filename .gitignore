@@ -1,5 +1,5 @@
 # PHP credentials — NEVER push this
-public/api/config.php
+api/config.php
 
 # Mac system files
 .DS_Store
