@@ -1529,7 +1529,7 @@ function cycleLoadingMsg() {
 async function callAPI() {
   const prompt = buildPrompt();
   try {
-    const res = await fetch('/api/analyze', {
+    const res = await fetch('/api/analyze.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, scores, answers })   // scores + answers saved to DB
@@ -1937,7 +1937,7 @@ async function sendToWhatsApp() {
 
   // ── Save phone number to DB ───────────────────────
   try {
-    await fetch('/api/save-phone', {
+    await fetch('/api/save-phone.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ submissionId, phone: '+' + fullPhone })
