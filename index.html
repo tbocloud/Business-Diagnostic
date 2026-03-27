@@ -1548,6 +1548,13 @@
         </div>
       </div>
 
+      <div class="q-block">
+        <div class="q-label">Which custom app would most benefit your business operations? <span class="opt-tag">(select all that apply)</span></div>
+        <div class="pills" id="app-options">
+          <!-- populated dynamically based on industry -->
+        </div>
+      </div>
+
       <button class="btn-next" onclick="next(4)">Continue →</button>
     </div>
 
@@ -1601,6 +1608,16 @@
               offline</label></div>
           <div class="pill"><input type="radio" name="custsource" id="cs-5" value="dont_know"><label for="cs-5">We don't
               know</label></div>
+        </div>
+      </div>
+
+      <div class="q-block">
+        <div class="q-label">How is your current SEO (search engine visibility)?</div>
+        <div class="pills">
+          <div class="pill"><input type="radio" name="seo" id="seo-1" value="active"><label for="seo-1">Actively optimized (blog, backlinks, Google My Business)</label></div>
+          <div class="pill"><input type="radio" name="seo" id="seo-2" value="basic"><label for="seo-2">Basic setup only (website exists, no active SEO)</label></div>
+          <div class="pill"><input type="radio" name="seo" id="seo-3" value="none"><label for="seo-3">Not working on it</label></div>
+          <div class="pill"><input type="radio" name="seo" id="seo-4" value="dont_know"><label for="seo-4">Not sure of my ranking</label></div>
         </div>
       </div>
 
@@ -1813,7 +1830,7 @@
         adaptS2();
       }
       if (from === 2) collectS2();
-      if (from === 3) { collectS3(); populateAIUseCases(); }
+      if (from === 3) { collectS3(); populateAIUseCases(); populateAppOptions(); }
       if (from === 4) collectS4();
 
       const to = from + 1;
@@ -1937,20 +1954,22 @@
     // COLLECT SECTION 4
     // ─────────────────────────────────────────────────
     function collectS4() {
-      answers.aitools = radio('aitools');
-      answers.aiwants = checkboxes('aiwant');
-      answers.decisions = radio('decisions');
-      answers.cashflowQ = radio('cashflow_q');
+      answers.aitools  = radio('aitools');
+      answers.aiwants  = checkboxes('aiwant');
+      answers.decisions= radio('decisions');
+      answers.cashflowQ= radio('cashflow_q');
+      answers.appWants = checkboxes('appwant');
     }
 
     // ─────────────────────────────────────────────────
     // SUBMIT
     // ─────────────────────────────────────────────────
     function submitForm() {
-      answers.postfreq = radio('postfreq');
-      answers.brand = radio('brand');
-      answers.custsource = radio('custsource');
-      answers.reviews = radio('reviews');
+      answers.postfreq  = radio('postfreq');
+      answers.brand     = radio('brand');
+      answers.custsource= radio('custsource');
+      answers.seo       = radio('seo');
+      answers.reviews   = radio('reviews');
 
       calcScores();
 
@@ -2016,6 +2035,11 @@
       if (answers.custsource !== 'dont_know') scores.marketing += 6;
       if (answers.reviews === 'active') scores.marketing += 10;
       else if (answers.reviews === 'collect_no_use') scores.marketing += 4;
+
+      // --- SEO ---
+      if      (answers.seo === 'active')     scores.digitalPresence += 18;
+      else if (answers.seo === 'basic')      scores.digitalPresence +=  7;
+      else if (answers.seo === 'dont_know')  scores.digitalPresence -=  5;
 
       // --- digital presence ---
       if (answers.website === 'yes') scores.digitalPresence += 30;
@@ -2166,10 +2190,94 @@
       const cases = AI_USE_CASES[industry] || AI_USE_CASES.other;
       const container = document.getElementById('ai-use-cases');
       container.innerHTML = cases.map((c, i) =>
-        `<div class="pill">
-      <input type="checkbox" name="aiwant" id="aw-${i}" value="${c.value}">
-      <label for="aw-${i}">${c.label}</label>
-    </div>`
+        `<div class="pill"><input type="checkbox" name="aiwant" id="aw-${i}" value="${c.value}"><label for="aw-${i}">${c.label}</label></div>`
+      ).join('');
+    }
+
+    // ─────────────────────────────────────────────────
+    // INDUSTRY-SPECIFIC APP OPTIONS
+    // ─────────────────────────────────────────────────
+    const APP_OPTIONS = {
+      retail:        [
+        { value:'pos_inventory',    label:'POS + Inventory Management App' },
+        { value:'loyalty_app',      label:'Customer Loyalty & Rewards App' },
+        { value:'online_ordering',  label:'Online Ordering App' },
+        { value:'staff_app',        label:'Staff Scheduling App' },
+      ],
+      healthcare:    [
+        { value:'patient_mgmt',     label:'Patient Management App' },
+        { value:'appointment',      label:'Appointment Booking App' },
+        { value:'billing_claims',   label:'Billing & Claims App' },
+        { value:'prescription',     label:'Prescription Tracking App' },
+      ],
+      construction:  [
+        { value:'project_track',    label:'Project Progress Tracking App' },
+        { value:'material_req',     label:'Material Request & Approval App' },
+        { value:'site_inspect',     label:'Site Inspection & Reporting App' },
+        { value:'subcontractor',    label:'Subcontractor Management App' },
+      ],
+      food_bev:      [
+        { value:'kitchen_order',    label:'Kitchen Order Management App' },
+        { value:'table_booking',    label:'Table Booking App' },
+        { value:'delivery_track',   label:'Delivery Tracking App' },
+        { value:'inventory_waste',  label:'Inventory & Waste Tracking App' },
+      ],
+      education:     [
+        { value:'student_portal',   label:'Student Portal & Progress App' },
+        { value:'fee_mgmt',         label:'Fee Collection & Management App' },
+        { value:'attendance',       label:'Attendance & Timetable App' },
+        { value:'course_mgmt',      label:'Course & Content Management App' },
+      ],
+      real_estate:   [
+        { value:'property_list',    label:'Property Listing App' },
+        { value:'lead_mgmt',        label:'Lead & Follow-up Management App' },
+        { value:'rental_mgmt',      label:'Rental & Lease Management App' },
+        { value:'site_visit',       label:'Site Visit Scheduler App' },
+      ],
+      manufacturing: [
+        { value:'production_track', label:'Production & Job Tracking App' },
+        { value:'quality_control',  label:'Quality Control & Inspection App' },
+        { value:'maintenance_log',  label:'Equipment Maintenance App' },
+        { value:'supplier_portal',  label:'Supplier & Purchase Portal App' },
+      ],
+      logistics:     [
+        { value:'delivery_track',   label:'Delivery Tracking App' },
+        { value:'fleet_mgmt',       label:'Fleet Management App' },
+        { value:'route_opt',        label:'Route Optimization App' },
+        { value:'customer_portal',  label:'Customer Shipment Portal App' },
+      ],
+      it:            [
+        { value:'project_mgmt',     label:'Project & Task Management App' },
+        { value:'client_portal',    label:'Client Portal & Reporting App' },
+        { value:'timesheet',        label:'Time Tracking & Billing App' },
+        { value:'support_ticket',   label:'Support Ticket Management App' },
+      ],
+      hospitality:   [
+        { value:'booking_app',      label:'Room / Service Booking App' },
+        { value:'guest_exp',        label:'Guest Experience & Requests App' },
+        { value:'fb_ordering',      label:'F&B Table Ordering App' },
+        { value:'housekeeping',     label:'Housekeeping Management App' },
+      ],
+      trading:       [
+        { value:'order_mgmt',       label:'Order Management App' },
+        { value:'supplier_portal',  label:'Supplier & Purchase Portal App' },
+        { value:'stock_track',      label:'Stock Tracking App' },
+        { value:'customer_acc',     label:'Customer Account & Credit App' },
+      ],
+      other:         [
+        { value:'biz_mgmt',         label:'Business Management App' },
+        { value:'customer_portal',  label:'Customer Portal App' },
+        { value:'reporting',        label:'Reporting & Dashboard App' },
+        { value:'communication',    label:'Team Communication App' },
+      ],
+    };
+
+    function populateAppOptions() {
+      const industry = answers.industry || 'other';
+      const opts     = APP_OPTIONS[industry] || APP_OPTIONS.other;
+      const container = document.getElementById('app-options');
+      container.innerHTML = opts.map((o, i) =>
+        `<div class="pill"><input type="checkbox" name="appwant" id="ao-${i}" value="${o.value}"><label for="ao-${i}">${o.label}</label></div>`
       ).join('');
     }
 
@@ -2262,6 +2370,8 @@ AI & DECISION MAKING:
 - Decision making process: ${answers.decisions || 'none'}
 - Cash flow early-warning interest: ${answers.cashflowQ || 'none'}
 - Wanted AI features: ${(answers.aiwants || []).join(', ') || 'none'}
+- Wanted custom apps: ${(answers.appWants || []).join(', ') || 'none'}
+- SEO status: ${answers.seo || 'not answered'}
 
 HEALTH SCORES (0–100):
 - Operations: ${scores.operations}
