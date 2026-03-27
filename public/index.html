@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Business Diagnostic — Know Where Your Business Stands</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --critical: #e8304a;
+      --warning:  #f5a623;
+      --caution:  #f0d44a;
+      --good:     #3de09a;
+      --strong:   #4a9ef5;
+      --dark:     #1a1a2e;
+      --mid:      #2d2d44;
+      --light:    #f4f6f9;
+      --white:    #ffffff;
+      --border:   #e2e8f0;
+      --text:     #1f2937;
+      --muted:    #6b7280;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--light);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      background: var(--dark);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { color: #fff; font-size: 1.4rem; font-weight: 700; }
+    .logo span { color: var(--warning); }
+    .header-tag {
+      background: rgba(245,166,35,0.15);
+      color: var(--warning);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 100px;
+      border: 1px solid rgba(245,166,35,0.3);
+    }
+
+    /* ── PROGRESS ────────────────────────────── */
+    .progress-wrap {
+      background: var(--mid);
+      padding: 10px 24px 14px;
+    }
+    .progress-bar-bg {
+      background: rgba(255,255,255,0.1);
+      border-radius: 100px;
+      height: 5px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--warning), var(--good));
+      border-radius: 100px;
+      transition: width 0.45s ease;
+      width: 20%;
+    }
+    .progress-steps {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+    .progress-step {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.35);
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    .progress-step.active { color: var(--warning); font-weight: 700; }
+    .progress-step.done   { color: rgba(61,224,154,0.7); }
+
+    /* ── MAIN CONTAINER ─────────────────────── */
+    .main { max-width: 740px; margin: 0 auto; padding: 36px 20px 60px; }
+
+    /* ── SECTION ────────────────────────────── */
+    .form-section { display: none; }
+    .form-section.active { display: block; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-header { margin-bottom: 28px; }
+    .section-tag {
+      display: inline-block;
+      background: rgba(232,48,74,0.08);
+      color: var(--critical);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.3;
+    }
+    .section-subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    /* ── QUESTION BLOCK ─────────────────────── */
+    .q-block {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      border: 1.5px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .q-block:hover { border-color: #c7d2de; }
+    .q-label {
+      font-size: 0.97rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 14px;
+      line-height: 1.45;
+    }
+    .opt-tag { font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+
+    /* ── RADIO / CHECK PILLS ─────────────────── */
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill { position: relative; }
+    .pill input[type="radio"], .pill input[type="checkbox"] {
+      position: absolute; opacity: 0; width: 0; pointer-events: none;
+    }
+    .pill label {
+      display: block;
+      padding: 7px 15px;
+      background: var(--light);
+      border: 2px solid var(--border);
+      border-radius: 100px;
+      cursor: pointer;
+      font-size: 0.87rem;
+      font-weight: 500;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .pill input:checked + label {
+      background: var(--dark);
+      border-color: var(--dark);
+      color: #fff;
+    }
+
+    /* ── SELECT ──────────────────────────────── */
+    .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.93rem;
+      color: var(--text);
+      background: var(--light);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+    }
+    .form-select:focus { outline: none; border-color: var(--dark); }
+
+    /* ── TEXT INPUT ──────────────────────────── */
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.93rem;
+      color: var(--text);
+      background: var(--light);
+    }
+    .form-input:focus { outline: none; border-color: var(--dark); }
+
+    /* ── PAIN CARDS ──────────────────────────── */
+    .pain-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 560px) { .pain-grid { grid-template-columns: 1fr; } }
+
+    .pain-card { position: relative; cursor: pointer; }
+    .pain-card input[type="checkbox"] { position: absolute; opacity: 0; }
+    .pain-inner {
+      padding: 13px 14px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--white);
+      height: 100%;
+      transition: all 0.15s;
+    }
+    .pain-card input:checked + .pain-inner {
+      border-color: var(--critical);
+      background: rgba(232,48,74,0.04);
+    }
+    .pain-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+    .sev-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+    }
+    .sev-dot.critical { background: var(--critical); }
+    .sev-dot.high     { background: var(--warning); }
+    .sev-dot.medium   { background: var(--caution); }
+    .pain-title { font-size: 0.88rem; font-weight: 600; color: var(--dark); line-height: 1.3; }
+    .pain-sub   { font-size: 0.78rem; color: var(--muted); padding-left: 17px; line-height: 1.45; }
+
+    .sub-section-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 18px 0 10px;
+    }
+
+    /* ── BUTTONS ─────────────────────────────── */
+    .btn-next {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--dark);
+      color: #fff;
+      border: none;
+      padding: 13px 28px;
+      border-radius: 100px;
+      font-size: 0.97rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 24px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-next:hover { background: #2c2c48; }
+    .btn-next:active { transform: scale(0.98); }
+
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #e8304a, #b71c35);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 24px;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+    .btn-submit:hover   { opacity: 0.9; }
+    .btn-submit:active  { transform: scale(0.99); }
+
+    /* ── ERROR ───────────────────────────────── */
+    .err-block {
+      background: rgba(232,48,74,0.08);
+      border: 1px solid rgba(232,48,74,0.25);
+      color: var(--critical);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      margin-top: 14px;
+    }
+    .hidden { display: none !important; }
+
+    /* ── LOADING ─────────────────────────────── */
+    #loading-state {
+      display: none;
+      text-align: center;
+      padding: 80px 24px;
+    }
+    .spinner {
+      width: 52px; height: 52px;
+      border: 4px solid var(--border);
+      border-top-color: var(--critical);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-title { font-size: 1.15rem; font-weight: 700; color: var(--dark); }
+    .loading-sub   { color: var(--muted); font-size: 0.88rem; margin-top: 6px; }
+
+    /* ── RESULTS ─────────────────────────────── */
+    #results-section { display: none; animation: fadeUp 0.4s ease; }
+
+    /* headline block */
+    .result-top {
+      background: var(--dark);
+      border-radius: 16px;
+      padding: 28px 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .result-headline {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+    .rating-badge {
+      display: inline-block;
+      padding: 6px 22px;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .r-critical   { background: var(--critical); color: #fff; }
+    .r-at_risk    { background: var(--warning);  color: #fff; }
+    .r-developing { background: var(--caution);  color: var(--dark); }
+    .r-strong     { background: var(--good);     color: var(--dark); }
+
+    /* score chips */
+    .score-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .score-chip {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 14px;
+      font-size: 0.83rem;
+    }
+    .score-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* charts */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) { .charts-row { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 18px;
+      border: 1px solid var(--border);
+    }
+    .chart-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    /* danger cards */
+    .result-block { margin-bottom: 20px; }
+    .result-block-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    .danger-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 10px; }
+    .danger-card {
+      background: var(--white);
+      border-radius: 10px;
+      padding: 16px;
+      border-left: 4px solid var(--critical);
+    }
+    .danger-card.warn { border-left-color: var(--warning); }
+    .danger-icon  { font-size: 1.4rem; margin-bottom: 7px; }
+    .danger-title { font-size: 0.9rem; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
+    .danger-text  { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+    /* risk block */
+    .risk-block {
+      background: linear-gradient(135deg, #1a1a2e, #2d2d44);
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 20px;
+    }
+    .risk-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--warning);
+      margin-bottom: 10px;
+    }
+    .risk-text { font-size: 0.93rem; line-height: 1.7; color: rgba(255,255,255,0.85); }
+
+    /* urgent actions */
+    .urgent-block {
+      background: rgba(232,48,74,0.05);
+      border: 1px solid rgba(232,48,74,0.18);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 20px;
+    }
+    .urgent-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--critical);
+      margin-bottom: 14px;
+    }
+    .urgent-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 9px;
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .urgent-num {
+      background: var(--critical);
+      color: #fff;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700;
+      flex-shrink: 0; margin-top: 1px;
+    }
+
+    /* gap cards */
+    .gap-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+    .gap-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .gap-area   { font-size: 0.98rem; font-weight: 700; color: var(--dark); }
+    .sev-badge {
+      font-size: 0.72rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 100px; text-transform: uppercase;
+    }
+    .sev-critical { background: rgba(232,48,74,0.1);  color: var(--critical); }
+    .sev-high     { background: rgba(245,166,35,0.12); color: #c07000; }
+    .sev-medium   { background: rgba(240,212,74,0.18); color: #7a5800; }
+    .gap-insight  { font-size: 0.89rem; color: var(--text); line-height: 1.65; margin-bottom: 10px; }
+    .gap-impact {
+      background: rgba(232,48,74,0.05);
+      border-left: 3px solid var(--critical);
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      color: var(--text);
+      border-radius: 0 6px 6px 0;
+      line-height: 1.5;
+    }
+    .gap-impact strong { color: var(--critical); }
+
+    /* solutions */
+    .solution-wrap { margin-bottom: 20px; border-radius: 14px; overflow: hidden; }
+    .solution-head {
+      background: var(--dark);
+      padding: 18px 22px;
+    }
+    .solution-head-eyebrow {
+      color: var(--warning);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .solution-head-title { color: #fff; font-size: 1.1rem; font-weight: 700; }
+    .solution-cards { background: var(--white); border: 1px solid var(--border); border-top: none; }
+    .sol-card { padding: 18px 22px; border-bottom: 1px solid var(--border); }
+    .sol-card:last-child { border-bottom: none; }
+    .sol-title { font-size: 0.97rem; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+    .sol-points { list-style: none; }
+    .sol-points li {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 0.87rem; color: var(--text); margin-bottom: 5px; line-height: 1.5;
+    }
+    .sol-points li::before { content: '✓'; color: var(--good); font-weight: 700; flex-shrink: 0; }
+
+    /* contact */
+    .contact-block {
+      background: linear-gradient(135deg, #1a1a2e, #0f3460);
+      border-radius: 16px;
+      padding: 32px 28px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .contact-block h3 { color: #fff; font-size: 1.4rem; margin-bottom: 8px; }
+    .contact-block p  { color: rgba(255,255,255,0.65); font-size: 0.9rem; margin-bottom: 22px; line-height: 1.5; }
+    .contact-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .btn-wa {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: #25d366; color: #fff;
+      text-decoration: none; padding: 11px 22px;
+      border-radius: 100px; font-weight: 600; font-size: 0.9rem;
+    }
+    .btn-web, .btn-email {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(255,255,255,0.1); color: #fff;
+      text-decoration: none; padding: 11px 22px;
+      border-radius: 100px; font-weight: 600; font-size: 0.9rem;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .contact-disclaimer {
+      color: rgba(255,255,255,0.3);
+      font-size: 0.76rem;
+      margin-top: 20px !important;
+    }
+
+    /* ── WHATSAPP SHARE BLOCK ────────────────────────── */
+    .wa-share-block {
+      background: linear-gradient(135deg, #00401a, #005c25);
+      border-radius: 16px;
+      padding: 28px 24px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .wa-share-icon  { font-size: 2.2rem; margin-bottom: 10px; }
+    .wa-share-title { color: #fff; font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; }
+    .wa-share-sub   {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin-bottom: 20px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .wa-input-row {
+      display: flex;
+      gap: 8px;
+      max-width: 520px;
+      margin: 0 auto 12px;
+      flex-wrap: wrap;
+    }
+    .wa-country-select-wrap { flex-shrink: 0; }
+    .wa-country-select {
+      height: 46px;
+      padding: 0 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .wa-country-select option { background: #005c25; color: #fff; }
+    .wa-phone-input {
+      flex: 1;
+      min-width: 160px;
+      height: 46px;
+      padding: 0 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      outline: none;
+    }
+    .wa-phone-input::placeholder { color: rgba(255,255,255,0.5); }
+    .wa-phone-input:focus { background: rgba(255,255,255,0.22); }
+    .btn-wa-send {
+      height: 46px;
+      padding: 0 20px;
+      background: #25d366;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .btn-wa-send:hover    { opacity: 0.88; }
+    .btn-wa-send:disabled { opacity: 0.5; cursor: not-allowed; }
+    .wa-status {
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    .wa-status.success { background: rgba(37,211,102,0.2); color: #a7f3c8; }
+    .wa-status.error   { background: rgba(232,48,74,0.2);  color: #fca5a5; }
+    .wa-note {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+    @media (max-width: 480px) {
+      .wa-input-row   { flex-direction: column; }
+      .btn-wa-send    { width: 100%; }
+      .wa-phone-input { width: 100%; }
+    }
+
+    /* highlight question */
+    .q-block.highlight {
+      border-color: rgba(232,48,74,0.35);
+      background: rgba(232,48,74,0.02);
+    }
+
+    @media (max-width: 480px) {
+      .main { padding: 24px 14px 60px; }
+      .section-title { font-size: 1.3rem; }
+      .btn-next { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">Your<span>Brand</span></div>
+  <div class="header-tag">Free Business Diagnostic · 5 min</div>
+</header>
+
+<!-- PROGRESS -->
+<div class="progress-wrap">
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+  <div class="progress-steps">
+    <span class="progress-step active" id="ps-1">Identity</span>
+    <span class="progress-step" id="ps-2">Current State</span>
+    <span class="progress-step" id="ps-3">Pain Points</span>
+    <span class="progress-step" id="ps-4">AI & Future</span>
+    <span class="progress-step" id="ps-5">Marketing</span>
+  </div>
+</div>
+
+<main class="main">
+
+  <!-- ============================================================
+       SECTION 1 — COMPANY IDENTITY
+  ============================================================ -->
+  <div class="form-section active" id="section-1">
+    <div class="section-header">
+      <div class="section-tag">Step 1 of 5</div>
+      <h1 class="section-title" id="s1-title">Tell us about your business</h1>
+      <p class="section-subtitle">So we ask the right questions — and give you a diagnosis that actually fits.</p>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Company name <span class="opt-tag">(optional)</span></div>
+      <input type="text" id="q-name" class="form-input" placeholder="e.g. Al Noor Trading">
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">How old is your business? *</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="age" id="age-1" value="just_started"><label for="age-1">Just started (< 1 yr)</label></div>
+        <div class="pill"><input type="radio" name="age" id="age-2" value="early_stage"><label for="age-2">Early stage (1–3 yrs)</label></div>
+        <div class="pill"><input type="radio" name="age" id="age-3" value="growing"><label for="age-3">Growing (3–7 yrs)</label></div>
+        <div class="pill"><input type="radio" name="age" id="age-4" value="established"><label for="age-4">Established (7+ yrs)</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">What type of business are you? *</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="btype" id="bt-1" value="product"><label for="bt-1">Product-based</label></div>
+        <div class="pill"><input type="radio" name="btype" id="bt-2" value="service"><label for="bt-2">Service-based</label></div>
+        <div class="pill"><input type="radio" name="btype" id="bt-3" value="both"><label for="bt-3">Both</label></div>
+        <div class="pill"><input type="radio" name="btype" id="bt-4" value="retail"><label for="bt-4">Retail</label></div>
+        <div class="pill"><input type="radio" name="btype" id="bt-5" value="wholesale"><label for="bt-5">Wholesale</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">What industry are you in? *</div>
+      <select id="q-industry" class="form-select">
+        <option value="">— Select your industry —</option>
+        <option value="retail">Retail</option>
+        <option value="healthcare">Healthcare</option>
+        <option value="construction">Construction</option>
+        <option value="food_bev">Food & Beverage</option>
+        <option value="education">Education</option>
+        <option value="real_estate">Real Estate</option>
+        <option value="manufacturing">Manufacturing</option>
+        <option value="logistics">Logistics</option>
+        <option value="it">IT / Technology</option>
+        <option value="hospitality">Hospitality</option>
+        <option value="trading">Trading</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">How many people work in your business? *</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="team" id="t-1" value="solo"><label for="t-1">Just me</label></div>
+        <div class="pill"><input type="radio" name="team" id="t-2" value="2_10"><label for="t-2">2–10</label></div>
+        <div class="pill"><input type="radio" name="team" id="t-3" value="11_50"><label for="t-3">11–50</label></div>
+        <div class="pill"><input type="radio" name="team" id="t-4" value="51_200"><label for="t-4">51–200</label></div>
+        <div class="pill"><input type="radio" name="team" id="t-5" value="200plus"><label for="t-5">200+</label></div>
+      </div>
+    </div>
+
+    <div id="s1-err" class="err-block hidden">Please answer all required questions to continue.</div>
+    <button class="btn-next" onclick="next(1)">Continue →</button>
+  </div>
+
+  <!-- ============================================================
+       SECTION 2 — CURRENT STATE
+  ============================================================ -->
+  <div class="form-section" id="section-2">
+    <div class="section-header">
+      <div class="section-tag">Step 2 of 5</div>
+      <h1 class="section-title" id="s2-title">What tools are you running on?</h1>
+      <p class="section-subtitle" id="s2-sub">Tell us what's already in place.</p>
+    </div>
+
+    <!-- universal -->
+    <div class="q-block">
+      <div class="q-label" id="ql-website">Do you have a website?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="website" id="w-1" value="yes"><label for="w-1">Yes, it's live</label></div>
+        <div class="pill"><input type="radio" name="website" id="w-2" value="inprogress"><label for="w-2">In progress</label></div>
+        <div class="pill"><input type="radio" name="website" id="w-3" value="no"><label for="w-3">No</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Do you use any software to manage your business?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="software" id="sw-1" value="erp"><label for="sw-1">Yes — ERP / ERPNext</label></div>
+        <div class="pill"><input type="radio" name="software" id="sw-2" value="accounting"><label for="sw-2">Accounting software</label></div>
+        <div class="pill"><input type="radio" name="software" id="sw-3" value="crm"><label for="sw-3">CRM only</label></div>
+        <div class="pill"><input type="radio" name="software" id="sw-4" value="excel"><label for="sw-4">Excel / manual</label></div>
+        <div class="pill"><input type="radio" name="software" id="sw-5" value="none"><label for="sw-5">Nothing yet</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label" id="ql-sales">Do you track your sales and expenses digitally?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="salestrack" id="st-1" value="automated"><label for="st-1">Yes, automated</label></div>
+        <div class="pill"><input type="radio" name="salestrack" id="st-2" value="manual"><label for="st-2">Yes, manually</label></div>
+        <div class="pill"><input type="radio" name="salestrack" id="st-3" value="no"><label for="st-3">No</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Do you have a social media presence?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="social" id="so-1" value="active_multi"><label for="so-1">Active on multiple</label></div>
+        <div class="pill"><input type="radio" name="social" id="so-2" value="active_one"><label for="so-2">Active on one</label></div>
+        <div class="pill"><input type="radio" name="social" id="so-3" value="inactive"><label for="so-3">Inactive</label></div>
+        <div class="pill"><input type="radio" name="social" id="so-4" value="none"><label for="so-4">None</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Do you run paid advertising? (Google, Instagram, Meta)</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="ads" id="ad-1" value="regular"><label for="ad-1">Yes, regularly</label></div>
+        <div class="pill"><input type="radio" name="ads" id="ad-2" value="tried"><label for="ad-2">Tried once or twice</label></div>
+        <div class="pill"><input type="radio" name="ads" id="ad-3" value="no"><label for="ad-3">No</label></div>
+      </div>
+    </div>
+
+    <!-- service-only -->
+    <div class="q-block hidden" id="q-appts">
+      <div class="q-label">How do you manage client appointments or projects?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="appts" id="ap-1" value="software"><label for="ap-1">Project software</label></div>
+        <div class="pill"><input type="radio" name="appts" id="ap-2" value="whatsapp"><label for="ap-2">WhatsApp / phone</label></div>
+        <div class="pill"><input type="radio" name="appts" id="ap-3" value="excel"><label for="ap-3">Excel / notes</label></div>
+        <div class="pill"><input type="radio" name="appts" id="ap-4" value="none"><label for="ap-4">No system</label></div>
+      </div>
+    </div>
+
+    <div class="q-block hidden" id="q-invoices">
+      <div class="q-label">Do you send quotations or invoices digitally?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="invoices" id="inv-1" value="automated"><label for="inv-1">Yes, automated</label></div>
+        <div class="pill"><input type="radio" name="invoices" id="inv-2" value="manual"><label for="inv-2">Yes, manually</label></div>
+        <div class="pill"><input type="radio" name="invoices" id="inv-3" value="no"><label for="inv-3">No</label></div>
+      </div>
+    </div>
+
+    <!-- product-only -->
+    <div class="q-block hidden" id="q-inventory">
+      <div class="q-label">How do you manage your inventory?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="inventory" id="iv-1" value="erp"><label for="iv-1">ERP / software</label></div>
+        <div class="pill"><input type="radio" name="inventory" id="iv-2" value="excel"><label for="iv-2">Excel</label></div>
+        <div class="pill"><input type="radio" name="inventory" id="iv-3" value="register"><label for="iv-3">Physical register</label></div>
+        <div class="pill"><input type="radio" name="inventory" id="iv-4" value="none"><label for="iv-4">No tracking</label></div>
+      </div>
+    </div>
+
+    <div class="q-block hidden" id="q-onlinestore">
+      <div class="q-label">Do you have an online store or ordering system?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="onlinestore" id="os-1" value="yes"><label for="os-1">Yes</label></div>
+        <div class="pill"><input type="radio" name="onlinestore" id="os-2" value="planning"><label for="os-2">Planning to</label></div>
+        <div class="pill"><input type="radio" name="onlinestore" id="os-3" value="no"><label for="os-3">No</label></div>
+      </div>
+    </div>
+
+    <!-- mature-only (3+ yrs) -->
+    <div class="q-block hidden" id="q-loyalty">
+      <div class="q-label">Do you have a system to track repeat customers or loyalty?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="loyalty" id="lo-1" value="yes"><label for="lo-1">Yes</label></div>
+        <div class="pill"><input type="radio" name="loyalty" id="lo-2" value="no"><label for="lo-2">No</label></div>
+      </div>
+    </div>
+
+    <div class="q-block hidden" id="q-profitvis">
+      <div class="q-label" id="ql-profit">Can you see which products or services make the most profit?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="profitvis" id="pv-1" value="yes"><label for="pv-1">Yes, clearly</label></div>
+        <div class="pill"><input type="radio" name="profitvis" id="pv-2" value="roughly"><label for="pv-2">Roughly</label></div>
+        <div class="pill"><input type="radio" name="profitvis" id="pv-3" value="no"><label for="pv-3">No idea</label></div>
+      </div>
+    </div>
+
+    <button class="btn-next" onclick="next(2)">Continue →</button>
+  </div>
+
+  <!-- ============================================================
+       SECTION 3 — PAIN POINTS
+  ============================================================ -->
+  <div class="form-section" id="section-3">
+    <div class="section-header">
+      <div class="section-tag">Step 3 of 5</div>
+      <h1 class="section-title">What's slowing you down?</h1>
+      <p class="section-subtitle">Select every situation that feels familiar. Be honest — this is your diagnosis.</p>
+    </div>
+
+    <!-- universal -->
+    <div class="sub-section-label">Select all that apply</div>
+    <div class="pain-grid" id="pain-universal">
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="profit_unknown" data-severity="critical" data-cat="finance">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot critical"></div><div class="pain-title">I don't know my exact profit at any point</div></div>
+          <div class="pain-sub">I rely on gut feeling or wait for the accountant</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="manual_waste" data-severity="critical" data-cat="operations">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot critical"></div><div class="pain-title">My team wastes time on manual tasks</div></div>
+          <div class="pain-sub">Data entry, WhatsApp follow-ups, manual reports</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="customer_source" data-severity="high" data-cat="marketing">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot high"></div><div class="pain-title">I don't know where my customers come from</div></div>
+          <div class="pain-sub">Can't track which marketing is working</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="losing_customers" data-severity="high" data-cat="marketing">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot high"></div><div class="pain-title">I lose customers and don't know why</div></div>
+          <div class="pain-sub">No follow-up system, no feedback process</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="scattered_data" data-severity="high" data-cat="operations">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot high"></div><div class="pain-title">My business data is scattered everywhere</div></div>
+          <div class="pain-sub">Different files, people, apps — no single source of truth</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="gut_decisions" data-severity="medium" data-cat="aiReadiness">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot medium"></div><div class="pain-title">I make decisions based on gut, not data</div></div>
+          <div class="pain-sub">No dashboard or report to guide me</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="weak_online" data-severity="medium" data-cat="digitalPresence">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot medium"></div><div class="pain-title">My business looks unprofessional online</div></div>
+          <div class="pain-sub">Website outdated or missing, weak social media</div>
+        </div>
+      </label>
+
+      <label class="pain-card">
+        <input type="checkbox" name="pain" value="low_conversion" data-severity="medium" data-cat="marketing">
+        <div class="pain-inner">
+          <div class="pain-head"><div class="sev-dot medium"></div><div class="pain-title">Leads come in but don't convert</div></div>
+          <div class="pain-sub">Inquiries arrive but don't close into sales</div>
+        </div>
+      </label>
+
+    </div>
+
+    <!-- no ERP -->
+    <div id="pain-noerp" class="hidden">
+      <div class="sub-section-label" style="margin-top:18px;">Finance & stock gaps</div>
+      <div class="pain-grid">
+
+        <label class="pain-card">
+          <input type="checkbox" name="pain" value="messy_accounts" data-severity="critical" data-cat="finance">
+          <div class="pain-inner">
+            <div class="pain-head"><div class="sev-dot critical"></div><div class="pain-title">My accounts are always behind or messy</div></div>
+            <div class="pain-sub">Hard to know what I owe or what's owed to me</div>
+          </div>
+        </label>
+
+        <label class="pain-card">
+          <input type="checkbox" name="pain" value="no_stock_picture" data-severity="high" data-cat="operations">
+          <div class="pain-inner">
+            <div class="pain-head"><div class="sev-dot high"></div><div class="pain-title">I have no clear picture of my stock</div></div>
+            <div class="pain-sub">Overstocking or running out without warning</div>
+          </div>
+        </label>
+
+      </div>
+    </div>
+
+    <!-- mature -->
+    <div id="pain-mature" class="hidden">
+      <div class="sub-section-label" style="margin-top:18px;">Scale & leadership gaps</div>
+      <div class="pain-grid">
+
+        <label class="pain-card">
+          <input type="checkbox" name="pain" value="cant_delegate" data-severity="critical" data-cat="operations">
+          <div class="pain-inner">
+            <div class="pain-head"><div class="sev-dot critical"></div><div class="pain-title">I can't delegate — everything runs through me</div></div>
+            <div class="pain-sub">No one has the right information to decide</div>
+          </div>
+        </label>
+
+        <label class="pain-card">
+          <input type="checkbox" name="pain" value="team_no_data" data-severity="high" data-cat="aiReadiness">
+          <div class="pain-inner">
+            <div class="pain-head"><div class="sev-dot high"></div><div class="pain-title">My team decides without real data</div></div>
+            <div class="pain-sub">No AI insights, no structured reporting</div>
+          </div>
+        </label>
+
+      </div>
+    </div>
+
+    <button class="btn-next" style="margin-top:24px;" onclick="next(3)">Continue →</button>
+  </div>
+
+  <!-- ============================================================
+       SECTION 4 — AI & FUTURE READINESS
+  ============================================================ -->
+  <div class="form-section" id="section-4">
+    <div class="section-header">
+      <div class="section-tag">Step 4 of 5</div>
+      <h1 class="section-title" id="s4-title">AI & Business Intelligence</h1>
+      <p class="section-subtitle" id="s4-sub">How ready is your business for smart, data-driven decisions?</p>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Are you currently using any AI tools in your business?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="aitools" id="ai-1" value="several"><label for="ai-1">Yes, several</label></div>
+        <div class="pill"><input type="radio" name="aitools" id="ai-2" value="one_two"><label for="ai-2">One or two</label></div>
+        <div class="pill"><input type="radio" name="aitools" id="ai-3" value="no"><label for="ai-3">No, not yet</label></div>
+        <div class="pill"><input type="radio" name="aitools" id="ai-4" value="dont_know"><label for="ai-4">I don't know what's available</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Which AI use cases would benefit you most? <span class="opt-tag">(select all that apply)</span></div>
+      <div class="pills">
+        <div class="pill"><input type="checkbox" name="aiwant" id="aw-1" value="financial_reports"><label for="aw-1">Auto-generate financial reports</label></div>
+        <div class="pill"><input type="checkbox" name="aiwant" id="aw-2" value="stock_predict"><label for="aw-2">Predict stock needs</label></div>
+        <div class="pill"><input type="checkbox" name="aiwant" id="aw-3" value="top_customers"><label for="aw-3">Identify top customers automatically</label></div>
+        <div class="pill"><input type="checkbox" name="aiwant" id="aw-4" value="late_payment"><label for="aw-4">Spot late payment risks early</label></div>
+        <div class="pill"><input type="checkbox" name="aiwant" id="aw-5" value="slow_products"><label for="aw-5">Insights on slow-moving products</label></div>
+        <div class="pill"><input type="checkbox" name="aiwant" id="aw-6" value="pl_realtime"><label for="aw-6">Real-time P&L visibility</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">How do you currently make important business decisions?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="decisions" id="dc-1" value="gut"><label for="dc-1">Experience + gut feeling</label></div>
+        <div class="pill"><input type="radio" name="decisions" id="dc-2" value="monthly"><label for="dc-2">Monthly reports</label></div>
+        <div class="pill"><input type="radio" name="decisions" id="dc-3" value="weekly"><label for="dc-3">Weekly meetings</label></div>
+        <div class="pill"><input type="radio" name="decisions" id="dc-4" value="dashboard"><label for="dc-4">Real-time dashboard</label></div>
+        <div class="pill"><input type="radio" name="decisions" id="dc-5" value="none"><label for="dc-5">No fixed process</label></div>
+      </div>
+    </div>
+
+    <div class="q-block highlight">
+      <div class="q-label">If you had a system that warned you <strong>2 weeks before a cash flow problem</strong> — would that change how you run the business?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="cashflow_q" id="cf-1" value="definitely"><label for="cf-1">Definitely yes</label></div>
+        <div class="pill"><input type="radio" name="cashflow_q" id="cf-2" value="probably"><label for="cf-2">Probably</label></div>
+        <div class="pill"><input type="radio" name="cashflow_q" id="cf-3" value="not_sure"><label for="cf-3">Not sure</label></div>
+        <div class="pill"><input type="radio" name="cashflow_q" id="cf-4" value="have_it"><label for="cf-4">We already have this</label></div>
+      </div>
+    </div>
+
+    <button class="btn-next" onclick="next(4)">Continue →</button>
+  </div>
+
+  <!-- ============================================================
+       SECTION 5 — DIGITAL MARKETING
+  ============================================================ -->
+  <div class="form-section" id="section-5">
+    <div class="section-header">
+      <div class="section-tag">Step 5 of 5 — Final Step</div>
+      <h1 class="section-title">Your online presence</h1>
+      <p class="section-subtitle">How visible and strong is your brand right now?</p>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">How often do you post on social media?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="postfreq" id="pf-1" value="daily"><label for="pf-1">Daily</label></div>
+        <div class="pill"><input type="radio" name="postfreq" id="pf-2" value="2_3_week"><label for="pf-2">2–3x a week</label></div>
+        <div class="pill"><input type="radio" name="postfreq" id="pf-3" value="once_week"><label for="pf-3">Once a week</label></div>
+        <div class="pill"><input type="radio" name="postfreq" id="pf-4" value="rarely"><label for="pf-4">Rarely</label></div>
+        <div class="pill"><input type="radio" name="postfreq" id="pf-5" value="never"><label for="pf-5">Never</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Do you have a consistent brand look? (logo, colours, templates)</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="brand" id="br-1" value="professional"><label for="br-1">Yes, professional</label></div>
+        <div class="pill"><input type="radio" name="brand" id="br-2" value="somewhat"><label for="br-2">Somewhat</label></div>
+        <div class="pill"><input type="radio" name="brand" id="br-3" value="no"><label for="br-3">No</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">What type of content do you currently produce? <span class="opt-tag">(select all)</span></div>
+      <div class="pills">
+        <div class="pill"><input type="checkbox" name="content" id="co-1" value="promo"><label for="co-1">Promotional posts</label></div>
+        <div class="pill"><input type="checkbox" name="content" id="co-2" value="photos"><label for="co-2">Product photos</label></div>
+        <div class="pill"><input type="checkbox" name="content" id="co-3" value="videos"><label for="co-3">Videos</label></div>
+        <div class="pill"><input type="checkbox" name="content" id="co-4" value="reels"><label for="co-4">Reels</label></div>
+        <div class="pill"><input type="checkbox" name="content" id="co-5" value="testimonials"><label for="co-5">Testimonials</label></div>
+        <div class="pill"><input type="checkbox" name="content" id="co-6" value="none"><label for="co-6">None yet</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Have you ever run a WhatsApp broadcast campaign to your customers?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="wabcast" id="wb-1" value="regularly"><label for="wb-1">Yes, regularly</label></div>
+        <div class="pill"><input type="radio" name="wabcast" id="wb-2" value="tried"><label for="wb-2">Tried once</label></div>
+        <div class="pill"><input type="radio" name="wabcast" id="wb-3" value="no"><label for="wb-3">No</label></div>
+        <div class="pill"><input type="radio" name="wabcast" id="wb-4" value="didnt_know"><label for="wb-4">Didn't know this was possible</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">How do most new customers find you?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="custsource" id="cs-1" value="referral"><label for="cs-1">Referral</label></div>
+        <div class="pill"><input type="radio" name="custsource" id="cs-2" value="social"><label for="cs-2">Social media</label></div>
+        <div class="pill"><input type="radio" name="custsource" id="cs-3" value="google"><label for="cs-3">Google</label></div>
+        <div class="pill"><input type="radio" name="custsource" id="cs-4" value="walkin"><label for="cs-4">Walk-in / offline</label></div>
+        <div class="pill"><input type="radio" name="custsource" id="cs-5" value="dont_know"><label for="cs-5">We don't know</label></div>
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Do you have a process to collect and use customer reviews?</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="reviews" id="rv-1" value="active"><label for="rv-1">Yes, active process</label></div>
+        <div class="pill"><input type="radio" name="reviews" id="rv-2" value="collect_no_use"><label for="rv-2">Collect but don't use</label></div>
+        <div class="pill"><input type="radio" name="reviews" id="rv-3" value="no"><label for="rv-3">No</label></div>
+      </div>
+    </div>
+
+    <div id="s5-err" class="err-block hidden">Please answer all questions to get your diagnosis.</div>
+    <button class="btn-submit" onclick="submitForm()">🔍 Analyse My Business Now</button>
+  </div>
+
+  <!-- ============================================================
+       LOADING STATE
+  ============================================================ -->
+  <div id="loading-state">
+    <div class="spinner"></div>
+    <div class="loading-title">Analysing your business…</div>
+    <div class="loading-sub" id="loading-msg">Running diagnostic across 5 critical areas</div>
+  </div>
+
+  <!-- ============================================================
+       RESULTS SECTION
+  ============================================================ -->
+  <div id="results-section">
+
+    <!-- headline + rating -->
+    <div class="result-top">
+      <div class="result-headline" id="res-headline">–</div>
+      <div class="rating-badge" id="res-rating">–</div>
+    </div>
+
+    <!-- score chips -->
+    <div class="score-chips" id="score-chips"></div>
+
+    <!-- charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-label">Business Health Overview</div>
+        <canvas id="radar-chart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">Gap vs Benchmark (70 = Industry Min)</div>
+        <canvas id="bar-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- danger zone -->
+    <div class="result-block" id="danger-block">
+      <div class="result-block-label">⚠️ Critical Zones</div>
+      <div class="danger-grid" id="danger-grid"></div>
+    </div>
+
+    <!-- risk paragraph -->
+    <div class="risk-block">
+      <div class="risk-label">Business Risk Assessment</div>
+      <div class="risk-text" id="res-risk">–</div>
+    </div>
+
+    <!-- urgent actions -->
+    <div class="urgent-block">
+      <div class="urgent-label">⚡ Urgent Actions — Do These First</div>
+      <div id="urgent-list"></div>
+    </div>
+
+    <!-- gap cards -->
+    <div class="result-block">
+      <div class="result-block-label" style="margin-bottom:14px;">🔍 Where You're Losing Ground</div>
+      <div id="gap-cards"></div>
+    </div>
+
+    <!-- solution block -->
+    <div class="solution-wrap">
+      <div class="solution-head">
+        <div class="solution-head-eyebrow">How we fix this for you</div>
+        <div class="solution-head-title">Services matched to your business gaps</div>
+      </div>
+      <div class="solution-cards" id="solution-cards"></div>
+    </div>
+
+    <!-- whatsapp share -->
+    <div class="wa-share-block" id="wa-share-block">
+      <div class="wa-share-icon">📲</div>
+      <h3 class="wa-share-title">Send this report to your client</h3>
+      <p class="wa-share-sub">Enter the client's WhatsApp number below. Their diagnostic summary will open in WhatsApp — ready to send from your device in one tap.</p>
+
+      <div class="wa-input-row">
+        <div class="wa-country-select-wrap">
+          <select id="wa-country-code" class="wa-country-select">
+            <option value="91">🇮🇳 +91</option>
+            <option value="971">🇦🇪 +971</option>
+            <option value="966">🇸🇦 +966</option>
+            <option value="974">🇶🇦 +974</option>
+            <option value="968">🇴🇲 +968</option>
+            <option value="973">🇧🇭 +973</option>
+            <option value="965">🇰🇼 +965</option>
+            <option value="44">🇬🇧 +44</option>
+            <option value="1">🇺🇸 +1</option>
+            <option value="60">🇲🇾 +60</option>
+            <option value="65">🇸🇬 +65</option>
+            <option value="92">🇵🇰 +92</option>
+            <option value="880">🇧🇩 +880</option>
+            <option value="94">🇱🇰 +94</option>
+          </select>
+        </div>
+        <input
+          type="tel"
+          id="wa-phone"
+          class="wa-phone-input"
+          placeholder="Client's WhatsApp number"
+          maxlength="15"
+          inputmode="numeric"
+        />
+        <button class="btn-wa-send" id="btn-wa-send" onclick="sendToWhatsApp()">
+          Send to Client
+        </button>
+      </div>
+
+      <div id="wa-status" class="wa-status hidden"></div>
+      <p class="wa-note">The client's number is saved securely and used only to send this diagnostic report.</p>
+    </div>
+
+    <!-- contact -->
+    <div class="contact-block">
+      <h3>Ready to fix this?</h3>
+      <p>Talk to us. No sales pitch — just clarity on what your business needs next.</p>
+      <div class="contact-btns">
+        <a href="https://wa.me/YOUR_WHATSAPP_NUMBER" class="btn-wa" target="_blank">💬 WhatsApp Us</a>
+        <a href="YOUR_WEBSITE_URL" class="btn-web" target="_blank">🌐 Our Website</a>
+        <a href="mailto:YOUR_EMAIL" class="btn-email">✉️ Send Enquiry</a>
+      </div>
+      <p class="contact-disclaimer">Your answers are used only to generate this diagnostic. We do not store or share your data.</p>
+    </div>
+
+  </div><!-- /results -->
+
+</main>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script>
+// ─────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────
+const answers = {};
+let profile = {};
+let scores  = { operations: 0, finance: 0, marketing: 0, digitalPresence: 0, aiReadiness: 0 };
+let submissionId = null;   // Supabase row ID — set after analyze API responds
+
+// ─────────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────────
+function next(from) {
+  if (from === 1) {
+    if (!validateS1()) return;
+    collectS1();
+    buildProfile();
+    adaptS2();
+  }
+  if (from === 2) collectS2();
+  if (from === 3) collectS3();
+  if (from === 4) collectS4();
+
+  const to = from + 1;
+  document.getElementById('section-' + from).classList.remove('active');
+  document.getElementById('section-' + to).classList.add('active');
+  updateProgress(to);
+  scrollTop();
+}
+
+function updateProgress(step) {
+  document.getElementById('progress-fill').style.width = (step / 5 * 100) + '%';
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('ps-' + i);
+    el.classList.remove('active','done');
+    if (i === step)  el.classList.add('active');
+    if (i  <  step)  el.classList.add('done');
+  }
+}
+
+function scrollTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+// ─────────────────────────────────────────────────
+// SECTION 1 — VALIDATE + COLLECT
+// ─────────────────────────────────────────────────
+function validateS1() {
+  const ok = radio('age') && radio('btype') && sel('q-industry') && radio('team');
+  document.getElementById('s1-err').classList.toggle('hidden', !!ok);
+  return !!ok;
+}
+
+function collectS1() {
+  answers.companyName = document.getElementById('q-name').value.trim() || 'Your Business';
+  answers.age         = radio('age');
+  answers.btype       = radio('btype');
+  answers.industry    = sel('q-industry');
+  answers.teamSize    = radio('team');
+}
+
+function buildProfile() {
+  profile = {
+    isStartup:    answers.age === 'just_started',
+    isEarlyStage: answers.age === 'early_stage',
+    isGrowing:    answers.age === 'growing',
+    isEstablished:answers.age === 'established',
+    isMature:     ['growing','established'].includes(answers.age),
+    isProduct:    ['product','retail','wholesale','both'].includes(answers.btype),
+    isService:    ['service','both'].includes(answers.btype),
+  };
+}
+
+// ─────────────────────────────────────────────────
+// ADAPT SECTION 2 — questions + tone
+// ─────────────────────────────────────────────────
+function adaptS2() {
+  show('q-appts',     profile.isService);
+  show('q-invoices',  profile.isService);
+  show('q-inventory', profile.isProduct);
+  show('q-onlinestore', profile.isProduct);
+  show('q-loyalty',   profile.isMature);
+  show('q-profitvis', profile.isMature);
+
+  if (profile.isStartup) {
+    document.getElementById('s2-title').textContent = 'What are you building with right now?';
+    document.getElementById('s2-sub').textContent   = 'Tell us what foundations are in place.';
+    document.getElementById('ql-website').textContent = 'Are you planning to have a website?';
+    document.getElementById('ql-sales').textContent   = 'Have you set up a way to track income and expenses yet?';
+    if (document.getElementById('ql-profit'))
+      document.getElementById('ql-profit').textContent = 'Are you tracking which services make the most profit?';
+  } else if (profile.isGrowing) {
+    document.getElementById('s2-title').textContent = 'What systems are keeping up with your growth?';
+    document.getElementById('s2-sub').textContent   = "Let's see if your tools match your ambition.";
+  } else if (profile.isEstablished) {
+    document.getElementById('s2-title').textContent = 'Are your systems working as hard as your team?';
+    document.getElementById('s2-sub').textContent   = "Let's audit what you rely on.";
+    if (document.getElementById('ql-profit'))
+      document.getElementById('ql-profit').textContent = 'Can you see exactly which areas drive profit right now, without asking your accountant?';
+  }
+}
+
+// ─────────────────────────────────────────────────
+// COLLECT SECTION 2
+// ─────────────────────────────────────────────────
+function collectS2() {
+  answers.website   = radio('website');
+  answers.software  = radio('software');
+  answers.salestrack= radio('salestrack');
+  answers.social    = radio('social');
+  answers.ads       = radio('ads');
+
+  if (profile.isService) {
+    answers.appointments = radio('appts');
+    answers.invoices     = radio('invoices');
+  }
+  if (profile.isProduct) {
+    answers.inventory  = radio('inventory');
+    answers.onlinestore= radio('onlinestore');
+  }
+  if (profile.isMature) {
+    answers.loyalty   = radio('loyalty');
+    answers.profitvis = radio('profitvis');
+  }
+
+  // update section 3 visibility
+  const noErp = ['excel','none'].includes(answers.software);
+  show('pain-noerp',  noErp);
+  show('pain-mature', profile.isMature);
+}
+
+// ─────────────────────────────────────────────────
+// COLLECT SECTION 3
+// ─────────────────────────────────────────────────
+function collectS3() {
+  answers.painPoints = [];
+  document.querySelectorAll('input[name="pain"]:checked').forEach(cb => {
+    answers.painPoints.push({ value: cb.value, severity: cb.dataset.severity, cat: cb.dataset.cat });
+  });
+}
+
+// ─────────────────────────────────────────────────
+// COLLECT SECTION 4
+// ─────────────────────────────────────────────────
+function collectS4() {
+  answers.aitools   = radio('aitools');
+  answers.aiwants   = checkboxes('aiwant');
+  answers.decisions = radio('decisions');
+  answers.cashflowQ = radio('cashflow_q');
+}
+
+// ─────────────────────────────────────────────────
+// SUBMIT
+// ─────────────────────────────────────────────────
+function submitForm() {
+  answers.postfreq  = radio('postfreq');
+  answers.brand     = radio('brand');
+  answers.content   = checkboxes('content');
+  answers.wabcast   = radio('wabcast');
+  answers.custsource= radio('custsource');
+  answers.reviews   = radio('reviews');
+
+  calcScores();
+
+  document.getElementById('section-5').classList.remove('active');
+  document.getElementById('loading-state').style.display = 'block';
+
+  cycleLoadingMsg();
+  callAPI();
+}
+
+// ─────────────────────────────────────────────────
+// SCORING ENGINE
+// ─────────────────────────────────────────────────
+function calcScores() {
+  scores = { operations: 0, finance: 0, marketing: 0, digitalPresence: 0, aiReadiness: 0 };
+
+  // --- operations ---
+  if      (answers.software === 'erp')        { scores.operations += 35; scores.finance += 25; }
+  else if (answers.software === 'accounting') { scores.operations += 15; scores.finance += 20; }
+  else if (answers.software === 'crm')          scores.operations += 10;
+  else if (answers.software === 'excel')      { scores.operations +=  8; scores.finance +=  5; }
+
+  if (profile.isService) {
+    if (answers.appointments === 'software') scores.operations += 15;
+    else if (answers.appointments === 'excel') scores.operations += 5;
+    if (answers.invoices === 'automated')  { scores.operations += 10; scores.finance += 10; }
+    else if (answers.invoices === 'manual'){ scores.operations +=  5; scores.finance +=  5; }
+  }
+
+  if (profile.isProduct) {
+    if (answers.inventory === 'erp')    scores.operations += 20;
+    else if (answers.inventory === 'excel') scores.operations += 8;
+    if (answers.onlinestore === 'yes') { scores.operations += 10; scores.digitalPresence += 15; }
+  }
+
+  // --- finance ---
+  if      (answers.salestrack === 'automated') scores.finance += 25;
+  else if (answers.salestrack === 'manual')    scores.finance += 10;
+
+  if (profile.isMature) {
+    if      (answers.profitvis === 'yes')    scores.finance += 20;
+    else if (answers.profitvis === 'roughly') scores.finance += 8;
+    if (answers.loyalty === 'yes') scores.finance += 5;
+  }
+
+  // --- marketing ---
+  if      (answers.social === 'active_multi') scores.marketing += 18;
+  else if (answers.social === 'active_one')   scores.marketing += 10;
+  else if (answers.social === 'inactive')     scores.marketing +=  3;
+
+  if      (answers.ads === 'regular') scores.marketing += 25;
+  else if (answers.ads === 'tried')   scores.marketing += 10;
+
+  const pfScore = { daily:20, '2_3_week':14, once_week:8, rarely:3, never:0 };
+  scores.marketing += pfScore[answers.postfreq] || 0;
+
+  if      (answers.wabcast === 'regularly') scores.marketing += 12;
+  else if (answers.wabcast === 'tried')     scores.marketing +=  5;
+
+  if (answers.custsource !== 'dont_know') scores.marketing += 6;
+  if      (answers.reviews === 'active')          scores.marketing += 10;
+  else if (answers.reviews === 'collect_no_use')  scores.marketing +=  4;
+
+  // --- digital presence ---
+  if      (answers.website === 'yes')        scores.digitalPresence += 30;
+  else if (answers.website === 'inprogress') scores.digitalPresence += 10;
+
+  if      (answers.social === 'active_multi') scores.digitalPresence += 18;
+  else if (answers.social === 'active_one')   scores.digitalPresence += 10;
+
+  if      (answers.brand === 'professional') scores.digitalPresence += 20;
+  else if (answers.brand === 'somewhat')     scores.digitalPresence +=  8;
+
+  const contentTypes = (answers.content || []).filter(c => c !== 'none').length;
+  scores.digitalPresence += Math.min(18, contentTypes * 4);
+
+  // --- AI readiness ---
+  if      (answers.aitools === 'several') scores.aiReadiness += 40;
+  else if (answers.aitools === 'one_two') scores.aiReadiness += 20;
+
+  if      (answers.decisions === 'dashboard') scores.aiReadiness += 30;
+  else if (answers.decisions === 'monthly')   scores.aiReadiness += 15;
+  else if (answers.decisions === 'weekly')    scores.aiReadiness += 10;
+
+  if (answers.cashflowQ === 'have_it') scores.aiReadiness += 20;
+
+  const aiWantBonus = Math.min(10, ((answers.aiwants || []).length) * 2);
+  scores.aiReadiness += aiWantBonus;
+
+  // caps before pain deductions
+  Object.keys(scores).forEach(k => { scores[k] = Math.min(80, scores[k]); });
+
+  // pain point deductions
+  const deduct = { critical: 15, high: 8, medium: 4 };
+  (answers.painPoints || []).forEach(p => {
+    const cat = p.cat;
+    if (scores[cat] !== undefined) {
+      scores[cat] = Math.max(0, scores[cat] - (deduct[p.severity] || 4));
+    }
+  });
+
+  // final clamp
+  Object.keys(scores).forEach(k => {
+    scores[k] = Math.min(95, Math.max(5, Math.round(scores[k])));
+  });
+}
+
+// ─────────────────────────────────────────────────
+// LOADING MESSAGES CYCLE
+// ─────────────────────────────────────────────────
+function cycleLoadingMsg() {
+  const msgs = [
+    'Running diagnostic across 5 critical areas',
+    'Scoring your operations and finance…',
+    'Analysing your digital presence…',
+    'Checking AI & data readiness…',
+    'Building your personalised report…'
+  ];
+  let i = 0;
+  const el = document.getElementById('loading-msg');
+  const iv = setInterval(() => {
+    i = (i + 1) % msgs.length;
+    el.textContent = msgs[i];
+  }, 1800);
+  window._loadingInterval = iv;
+}
+
+// ─────────────────────────────────────────────────
+// API CALL
+// ─────────────────────────────────────────────────
+async function callAPI() {
+  const prompt = buildPrompt();
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, scores, answers })   // scores + answers saved to DB
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderResults(data);
+  } catch (e) {
+    console.warn('API error, using fallback:', e.message);
+    renderResults(fallbackAnalysis());
+  }
+}
+
+function buildPrompt() {
+  const industryLabel = {
+    retail:'Retail', healthcare:'Healthcare', construction:'Construction',
+    food_bev:'Food & Beverage', education:'Education', real_estate:'Real Estate',
+    manufacturing:'Manufacturing', logistics:'Logistics', it:'IT/Technology',
+    hospitality:'Hospitality', trading:'Trading', other:'Other'
+  }[answers.industry] || answers.industry;
+
+  const ageLabel = {
+    just_started:'Less than 1 year (startup)', early_stage:'1–3 years (early stage)',
+    growing:'3–7 years (growing)', established:'7+ years (established)'
+  }[answers.age] || answers.age;
+
+  const typeLabel = {
+    product:'Product-based', service:'Service-based', both:'Product & Service',
+    retail:'Retail', wholesale:'Wholesale'
+  }[answers.btype] || answers.btype;
+
+  const pains = (answers.painPoints||[]).map(p => `- ${p.value.replace(/_/g,' ')} (${p.severity})`).join('\n') || '(none selected)';
+  const avg = Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/5);
+
+  return `You are a senior business consultant generating a concise diagnostic report.
+
+COMPANY PROFILE:
+- Name: ${answers.companyName}
+- Business age: ${ageLabel}
+- Industry: ${industryLabel}
+- Type: ${typeLabel}
+- Team size: ${answers.teamSize}
+
+TOOLS IN USE:
+- Management software: ${answers.software || 'none'}
+- Sales/expense tracking: ${answers.salestrack || 'none'}
+- Website: ${answers.website || 'none'}
+- Social media: ${answers.social || 'none'}
+- Paid advertising: ${answers.ads || 'none'}
+${profile.isService ? `- Client management: ${answers.appointments || 'none'}` : ''}
+${profile.isProduct ? `- Inventory: ${answers.inventory || 'none'}` : ''}
+
+PROBLEMS THEY IDENTIFIED:
+${pains}
+
+AI & DECISION MAKING:
+- Current AI tools: ${answers.aitools || 'none'}
+- Decision making process: ${answers.decisions || 'none'}
+- Cash flow early-warning interest: ${answers.cashflowQ || 'none'}
+- Wanted AI features: ${(answers.aiwants||[]).join(', ') || 'none'}
+
+HEALTH SCORES (0–100):
+- Operations: ${scores.operations}
+- Finance: ${scores.finance}
+- Marketing: ${scores.marketing}
+- Digital Presence: ${scores.digitalPresence}
+- AI Readiness: ${scores.aiReadiness}
+- Overall average: ${avg}
+
+TASK:
+Return ONLY a valid JSON object — no markdown, no code blocks, no extra text.
+
+Use this exact structure:
+{
+  "headline": "One sharp sentence, max 12 words, describing their biggest current risk",
+  "overallRating": "Critical",
+  "gaps": [
+    {
+      "area": "Finance",
+      "severity": "Critical",
+      "insight": "Two sentences: what the gap is and why it is specifically dangerous for a ${ageLabel} ${typeLabel} business in ${industryLabel}.",
+      "impact": "One concrete consequence if this is not addressed."
+    }
+  ],
+  "urgentActions": [
+    "Action 1 — max 12 words, specific to this business",
+    "Action 2",
+    "Action 3"
+  ],
+  "businessRisk": "2–3 sentences. Frame their current situation as a real risk to their growth. Use honest, direct language. Mention what they stand to lose. Do not give advice here — just the risk picture."
+}
+
+RULES:
+- overallRating must be exactly one of: Critical / At Risk / Developing / Strong
+- Include maximum 3 gaps — only for categories scoring below 70
+- Focus on their specific industry (${industryLabel}) and stage (${ageLabel})
+- Do not be generic. Every sentence must relate to what they told you.
+- The goal is honest reflection, not alarm. Make them think, not panic.`;
+}
+
+// ─────────────────────────────────────────────────
+// FALLBACK ANALYSIS (no API)
+// ─────────────────────────────────────────────────
+function fallbackAnalysis() {
+  const avg = Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/5);
+  const rating = avg<30?'Critical':avg<50?'At Risk':avg<70?'Developing':'Strong';
+
+  const sortedCats = Object.entries(scores).sort((a,b)=>a[1]-b[1]);
+  const gaps = sortedCats.slice(0,3).filter(([,v])=>v<70).map(([cat, score]) => ({
+    area: catName(cat),
+    severity: score<30?'Critical':score<50?'High':'Medium',
+    insight: localInsight(cat, score),
+    impact:  localImpact(cat)
+  }));
+
+  return {
+    headline: avg<50 ? 'Critical gaps are slowing your growth right now.' : 'Key areas need attention before you can scale confidently.',
+    overallRating: rating,
+    gaps,
+    urgentActions: sortedCats.slice(0,3).map(([cat])=>localAction(cat)),
+    businessRisk: localRisk(avg)
+  };
+}
+
+function localInsight(cat, s) {
+  return {
+    finance:`Your finance visibility score is ${s}/100. Without real-time financial data, you cannot make confident growth or investment decisions. Every month that passes without this clarity is a month of missed opportunity.`,
+    operations:`Your operations score is ${s}/100. Manual processes are consuming time and creating errors that slow your entire team. As you grow, this bottleneck becomes more expensive to fix.`,
+    marketing:`Your marketing score is ${s}/100. You are not consistently reaching enough potential customers. Without a structured marketing system, your revenue depends on luck, not strategy.`,
+    digitalPresence:`Your digital presence score is ${s}/100. Potential customers are searching for what you offer online — and not finding you. A weak online footprint hands business directly to competitors.`,
+    aiReadiness:`Your AI readiness score is ${s}/100. Businesses using data and AI insights are making better decisions faster. Without this, you are reacting to problems instead of preventing them.`
+  }[cat] || `This area scored ${s}/100 and needs attention.`;
+}
+
+function localImpact(cat) {
+  return {
+    finance:'You will continue to face cash flow surprises and miss profit opportunities.',
+    operations:'Scaling becomes very difficult when everything depends on manual effort.',
+    marketing:'Customer growth will remain slow, unpredictable, and dependent on referrals.',
+    digitalPresence:'New customers cannot find or trust you online — that business goes elsewhere.',
+    aiReadiness:'You will keep reacting to problems instead of preventing them weeks earlier.'
+  }[cat] || 'This gap will limit your ability to grow.';
+}
+
+function localAction(cat) {
+  return {
+    finance:'Set up automated real-time financial tracking and reporting',
+    operations:'Centralise all business data onto one management platform',
+    marketing:'Build a consistent weekly content and campaign plan across social channels',
+    digitalPresence:'Launch or revamp your website and create a professional brand kit',
+    aiReadiness:'Implement an AI-powered insights dashboard for daily decision-making'
+  }[cat] || `Improve your ${catName(cat).toLowerCase()} systems immediately`;
+}
+
+function localRisk(avg) {
+  if (avg < 40) return `With an average health score of ${avg}/100, your business is operating on a fragile foundation. The gaps identified are not inconveniences — they are the reason growth feels harder than it should. Businesses that let these gaps persist see the distance between their potential and their actual results grow over time.`;
+  return `With an average health score of ${avg}/100, your business has clear opportunities to strengthen its foundation. The areas flagged represent real risk to your growth trajectory if left unaddressed. Closing these gaps consistently separates businesses that scale from those that plateau.`;
+}
+
+// ─────────────────────────────────────────────────
+// RENDER RESULTS
+// ─────────────────────────────────────────────────
+function renderResults(data) {
+  clearInterval(window._loadingInterval);
+  document.getElementById('loading-state').style.display = 'none';
+  document.getElementById('results-section').style.display = 'block';
+
+  // capture submission ID for phone linking
+  if (data.submissionId) submissionId = data.submissionId;
+
+  // headline + rating
+  document.getElementById('res-headline').textContent = data.headline || '–';
+  const rEl = document.getElementById('res-rating');
+  const rt  = (data.overallRating || 'Developing').replace(' ','_');
+  rEl.textContent  = data.overallRating || '–';
+  rEl.className    = 'rating-badge r-' + rt.toLowerCase();
+
+  renderScoreChips();
+  renderRadar();
+  renderBar();
+  renderDanger();
+
+  document.getElementById('res-risk').textContent = data.businessRisk || '–';
+  renderUrgent(data.urgentActions || []);
+  renderGaps(data.gaps || []);
+  renderSolutions();
+
+  scrollTop();
+}
+
+function renderScoreChips() {
+  const labels = { operations:'Operations', finance:'Finance', marketing:'Marketing', digitalPresence:'Digital Presence', aiReadiness:'AI Readiness' };
+  document.getElementById('score-chips').innerHTML = Object.entries(scores).map(([k,v]) =>
+    `<div class="score-chip">
+      <div class="score-dot" style="background:${dotColor(v)}"></div>
+      <span>${labels[k]}</span><strong>${v}</strong>
+    </div>`
+  ).join('');
+}
+
+function renderRadar() {
+  const avg = Object.values(scores).reduce((a,b)=>a+b,0)/5;
+  const bc  = avg<40?'#e8304a':avg<60?'#f5a623':'#3de09a';
+  new Chart(document.getElementById('radar-chart').getContext('2d'), {
+    type: 'radar',
+    data: {
+      labels: ['Operations','Finance','Marketing','Digital\nPresence','AI Ready'],
+      datasets: [{
+        data: [scores.operations, scores.finance, scores.marketing, scores.digitalPresence, scores.aiReadiness],
+        backgroundColor: bc.replace(')',',0.15)').replace('rgb','rgba'),
+        borderColor: bc,
+        pointBackgroundColor: bc,
+        pointRadius: 4,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false, stepSize: 25 },
+          grid: { color: 'rgba(0,0,0,0.07)' },
+          pointLabels: { font: { size: 11 }, color: '#4b5563' }
+        }
+      }
+    }
+  });
+}
+
+function renderBar() {
+  const vals   = [scores.operations, scores.finance, scores.marketing, scores.digitalPresence, scores.aiReadiness];
+  const colors = vals.map(v => v<50?'#e8304a':v<70?'#f5a623':'#3de09a');
+  new Chart(document.getElementById('bar-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Ops','Finance','Marketing','Digital','AI'],
+      datasets: [
+        { label:'Score', data: vals, backgroundColor: colors, borderRadius: 5 },
+        { label:'Benchmark (70)', data:[70,70,70,70,70], type:'line',
+          borderColor:'#94a3b8', borderDash:[4,4], pointRadius:0, fill:false, borderWidth:1.5 }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { min:0, max:100, grid:{ color:'rgba(0,0,0,0.05)' } },
+        y: { grid:{ display:false } }
+      }
+    }
+  });
+}
+
+function renderDanger() {
+  const meta = {
+    operations:    { icon:'⚙️', label:'Operations',       text:'Manual workflows are consuming time that should go toward growth.' },
+    finance:       { icon:'💰', label:'Finance Visibility', text:'Without real-time financial data, you are making important decisions blind.' },
+    marketing:     { icon:'📣', label:'Marketing Reach',   text:'Your customer acquisition is inconsistent and leaving revenue on the table.' },
+    digitalPresence:{ icon:'🌐', label:'Digital Presence', text:'Customers searching for you online are not finding a reason to choose you.' },
+    aiReadiness:   { icon:'🤖', label:'AI Readiness',      text:'Competitors using data and AI insights are making faster, better decisions than you.' }
+  };
+  const grid = document.getElementById('danger-grid');
+  grid.innerHTML = '';
+  let count = 0;
+  Object.entries(scores).sort((a,b)=>a[1]-b[1]).forEach(([cat,score]) => {
+    if (score < 50 && count < 3) {
+      count++;
+      const m = meta[cat];
+      grid.innerHTML += `
+        <div class="danger-card ${score<30?'':'warn'}">
+          <div class="danger-icon">${m.icon}</div>
+          <div class="danger-title">${m.label} — ${score<30?'Critical':'At Risk'}</div>
+          <div class="danger-text">${m.text}</div>
+        </div>`;
+    }
+  });
+  if (!count) document.getElementById('danger-block').style.display = 'none';
+}
+
+function renderUrgent(actions) {
+  document.getElementById('urgent-list').innerHTML = actions.map((a,i) =>
+    `<div class="urgent-item"><div class="urgent-num">${i+1}</div><span>${a}</span></div>`
+  ).join('');
+}
+
+function renderGaps(gaps) {
+  document.getElementById('gap-cards').innerHTML = gaps.map(g => `
+    <div class="gap-card">
+      <div class="gap-header">
+        <div class="gap-area">${g.area}</div>
+        <div class="sev-badge sev-${(g.severity||'').toLowerCase()}">${g.severity}</div>
+      </div>
+      <div class="gap-insight">${g.insight}</div>
+      <div class="gap-impact"><strong>If not fixed:</strong> ${g.impact}</div>
+    </div>`).join('');
+}
+
+function renderSolutions() {
+  const map = {
+    finance: {
+      title: 'CFO Support + ERPNext Finance Module',
+      points: [
+        'Real-time P&L, cash flow, and balance sheet — always up to date',
+        'AI alerts for payment delays and budget overruns before they happen',
+        'Monthly financial guidance from our CFO advisory team for SMEs and startups'
+      ]
+    },
+    operations: {
+      title: 'ERPNext Full Business System',
+      points: [
+        'Single platform for purchases, sales, inventory, HR, and accounts',
+        'Eliminate manual work and connect every department under one system',
+        'AI insights dashboard for instant, confident decision-making'
+      ]
+    },
+    marketing: {
+      title: 'Digital Marketing Full Package',
+      points: [
+        'Instagram and WhatsApp campaign management — handled for you monthly',
+        'Poster and video content production designed to drive enquiries',
+        'SEO and Google presence setup for long-term customer discovery'
+      ]
+    },
+    digitalPresence: {
+      title: 'Brand & Online Presence Build',
+      points: [
+        'Professional website design — mobile-ready and SEO-optimised',
+        'Consistent brand kit: logo, colours, and templates your team will actually use',
+        'WhatsApp Business integration with broadcast and automation'
+      ]
+    },
+    aiReadiness: {
+      title: 'AI Insights in ERPNext',
+      points: [
+        'Predictive stock alerts and customer behaviour analysis built into your ERP',
+        'Auto-generated reports with AI-driven recommendations every week',
+        'Cash flow forecasting with a 2-week early warning system'
+      ]
+    }
+  };
+
+  const container = document.getElementById('solution-cards');
+  container.innerHTML = '';
+  let shown = 0;
+  Object.entries(scores).sort((a,b)=>a[1]-b[1]).forEach(([cat, score]) => {
+    if (score < 70 && map[cat] && shown < 3) {
+      shown++;
+      const s = map[cat];
+      container.innerHTML += `
+        <div class="sol-card">
+          <div class="sol-title">${s.title}</div>
+          <ul class="sol-points">${s.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+        </div>`;
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────
+function radio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+function sel(id) {
+  const el = document.getElementById(id);
+  return el && el.value ? el.value : null;
+}
+function checkboxes(name) {
+  return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(e=>e.value);
+}
+function show(id, visible) {
+  document.getElementById(id).classList.toggle('hidden', !visible);
+}
+function dotColor(v) {
+  return v<30?'#e8304a':v<50?'#f5a623':v<70?'#f0d44a':v<85?'#3de09a':'#4a9ef5';
+}
+function catName(cat) {
+  return { operations:'Operations', finance:'Finance', marketing:'Marketing', digitalPresence:'Digital Presence', aiReadiness:'AI Readiness' }[cat] || cat;
+}
+
+// ─────────────────────────────────────────────────
+// WHATSAPP SHARE
+// ─────────────────────────────────────────────────
+async function sendToWhatsApp() {
+  const countryCode = document.getElementById('wa-country-code').value;
+  const rawPhone    = document.getElementById('wa-phone').value.trim().replace(/\D/g, '');
+  const statusEl    = document.getElementById('wa-status');
+  const btnEl       = document.getElementById('btn-wa-send');
+
+  // validate
+  if (!rawPhone || rawPhone.length < 7) {
+    showWaStatus('Please enter a valid WhatsApp number.', 'error');
+    return;
+  }
+
+  const fullPhone = countryCode + rawPhone;   // e.g. 919876543210
+
+  btnEl.disabled       = true;
+  btnEl.textContent    = 'Opening WhatsApp…';
+  statusEl.className   = 'wa-status hidden';
+
+  // ── Save phone number to DB ───────────────────────
+  try {
+    await fetch('/api/save-phone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ submissionId, phone: '+' + fullPhone })
+    });
+  } catch (e) {
+    // non-fatal — still open WhatsApp
+    console.warn('Phone save failed:', e.message);
+  }
+
+  // ── Build WhatsApp message ────────────────────────
+  const avg    = Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/5);
+  const rating = document.getElementById('res-rating').textContent || '–';
+  const headline = document.getElementById('res-headline').textContent || '';
+  const name   = answers.companyName || 'Your Business';
+
+  // top 3 low-scoring gaps as bullet lines
+  const catLabels = { operations:'Operations', finance:'Finance', marketing:'Marketing', digitalPresence:'Digital Presence', aiReadiness:'AI Readiness' };
+  const gapLines  = Object.entries(scores)
+    .sort((a,b) => a[1]-b[1])
+    .slice(0,3)
+    .map(([k,v]) => `• ${catLabels[k]}: ${v}/100`)
+    .join('\n');
+
+  const message =
+`📊 *Business Diagnostic Report*
+${name}
+
+*${headline}*
+
+Overall Rating: *${rating}*
+Average Health Score: *${avg}/100*
+
+Weakest Areas:
+${gapLines}
+
+─────────────────
+Want to fix this? Talk to us:
+https://wa.me/YOUR_WHATSAPP_NUMBER`;
+
+  // ── Open WhatsApp ─────────────────────────────────
+  const waUrl = `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
+  window.open(waUrl, '_blank');
+
+  showWaStatus('✅ WhatsApp opened! Your diagnostic summary is ready to send.', 'success');
+  btnEl.disabled    = false;
+  btnEl.textContent = 'Send via WhatsApp';
+}
+
+function showWaStatus(msg, type) {
+  const el = document.getElementById('wa-status');
+  el.textContent = msg;
+  el.className   = 'wa-status ' + type;
+}
+</script>
+</body>
+</html>

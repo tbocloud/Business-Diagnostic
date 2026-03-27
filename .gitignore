@@ -1,0 +1,12 @@
+# Environment variables — NEVER push this
+.env
+
+# Node dependencies — reinstalled with npm install
+node_modules/
+
+# Mac system files
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
