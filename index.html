@@ -1205,10 +1205,15 @@
 
       <!-- Share results -->
       <h3 class="wa-share-title" style="font-size:1.05rem;">Share This Report</h3>
-      <p class="wa-share-sub" style="margin-bottom:14px;">Share your diagnostic summary via WhatsApp, email, or any app.</p>
-      <button class="btn-wa-send" onclick="shareResults()" style="height:46px;padding:0 28px;border-radius:10px;font-size:0.95rem;">
-        Share Results
-      </button>
+      <p class="wa-share-sub" style="margin-bottom:14px;">Send your diagnostic result link via WhatsApp or Email.</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn-wa-send" onclick="shareViaWhatsApp()" style="height:46px;padding:0 22px;border-radius:10px;font-size:0.92rem;background:#25d366;">
+          💬 WhatsApp
+        </button>
+        <button class="btn-wa-send" onclick="shareViaEmail()" style="height:46px;padding:0 22px;border-radius:10px;font-size:0.92rem;background:rgba(255,255,255,0.15);">
+          ✉️ Email
+        </button>
+      </div>
 
     </div>
 
@@ -1238,7 +1243,33 @@
 const answers = {};
 let profile = {};
 let scores  = { operations: 0, finance: 0, marketing: 0, digitalPresence: 0, aiReadiness: 0 };
-let submissionId = null;   // Supabase row ID — set after analyze API responds
+let submissionId = null;
+
+// ─────────────────────────────────────────────────
+// LOAD RESULT FROM URL ?id=
+// ─────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) return;
+
+  // hide form, show loading
+  document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+  document.querySelector('.progress-wrap').style.display = 'none';
+  document.getElementById('loading-state').style.display = 'block';
+
+  try {
+    const res  = await fetch('api/get-result.php?id=' + encodeURIComponent(id));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderResults(data);
+  } catch (e) {
+    // fallback — show the form normally
+    document.querySelector('.progress-wrap').style.display = '';
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('section-1').classList.add('active');
+    history.replaceState({}, '', window.location.pathname);
+  }
+});
 
 // ─────────────────────────────────────────────────
 // NAVIGATION
@@ -1806,8 +1837,15 @@ function renderResults(data) {
   document.getElementById('loading-state').style.display = 'none';
   document.getElementById('results-section').style.display = 'block';
 
-  // capture submission ID for phone linking
-  if (data.submissionId) submissionId = data.submissionId;
+  // restore scores + answers if loaded from DB link
+  if (data.scores)  scores = data.scores;
+  if (data.answers) Object.assign(answers, data.answers);
+
+  // capture submission ID and update URL for sharing
+  if (data.submissionId) {
+    submissionId = data.submissionId;
+    history.pushState({}, '', '?id=' + submissionId);
+  }
 
   // headline + rating
   document.getElementById('res-headline').textContent = data.headline || '–';
@@ -2036,19 +2074,28 @@ async function savePhone() {
     return;
   }
 
+  if (!submissionId) {
+    showWaStatus('No submission found. Please complete the diagnostic first.', 'error');
+    return;
+  }
+
   btnEl.disabled    = true;
   btnEl.textContent = 'Saving…';
 
   try {
-    await fetch('api/save-phone.php', {
+    const res  = await fetch('/api/save-phone.php', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ submissionId, phone: '+' + countryCode + rawPhone })
     });
+    const data = await res.json();
+
+    if (!res.ok || data.error) throw new Error(data.error || 'Server error ' + res.status);
+
     showWaStatus('✅ Number saved! We\'ll be in touch soon.', 'success');
     btnEl.textContent = 'Saved ✓';
   } catch (e) {
-    showWaStatus('Could not save number. Please try again.', 'error');
+    showWaStatus('Could not save: ' + e.message, 'error');
     btnEl.disabled    = false;
     btnEl.textContent = 'Save Number';
   }
@@ -2057,11 +2104,12 @@ async function savePhone() {
 // ─────────────────────────────────────────────────
 // SHARE RESULTS
 // ─────────────────────────────────────────────────
-async function shareResults() {
+function buildShareContent() {
   const avg      = Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/5);
   const rating   = document.getElementById('res-rating').textContent   || '–';
   const headline = document.getElementById('res-headline').textContent || '';
   const name     = answers.companyName || 'Your Business';
+  const link     = window.location.href;  // includes ?id=
 
   const catLabels = { operations:'Operations', finance:'Finance', marketing:'Marketing', digitalPresence:'Digital Presence', aiReadiness:'AI Readiness' };
   const gapLines  = Object.entries(scores)
@@ -2081,25 +2129,26 @@ Average Health Score: ${avg}/100
 Weakest Areas:
 ${gapLines}
 
+View full report: ${link}
+
 ─────────────────
-Want to fix this?
 Team Back Office: https://teambackoffice.com/`;
 
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Business Diagnostic Report', text });
-      showWaStatus('✅ Shared successfully!', 'success');
-    } catch (e) {
-      if (e.name !== 'AbortError') fallbackShare(text);
-    }
-  } else {
-    fallbackShare(text);
-  }
+  return { text, link, name };
 }
 
-function fallbackShare(text) {
+function shareViaWhatsApp() {
+  const { text } = buildShareContent();
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-  showWaStatus('✅ Opening share…', 'success');
+  showWaStatus('✅ Opening WhatsApp…', 'success');
+}
+
+function shareViaEmail() {
+  const { text, name } = buildShareContent();
+  const subject = encodeURIComponent('Business Diagnostic Report — ' + name);
+  const body    = encodeURIComponent(text);
+  window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
+  showWaStatus('✅ Opening email…', 'success');
 }
 
 function showWaStatus(msg, type) {
