@@ -784,6 +784,16 @@
       </div>
     </div>
 
+    <div class="q-block">
+      <div class="q-label">How do you handle tax compliance? (GST filing, income tax, auditing) *</div>
+      <div class="pills">
+        <div class="pill"><input type="radio" name="compliance" id="cp-1" value="ca"><label for="cp-1">CA / Accountant handles it</label></div>
+        <div class="pill"><input type="radio" name="compliance" id="cp-2" value="software"><label for="cp-2">Tax / accounting software</label></div>
+        <div class="pill"><input type="radio" name="compliance" id="cp-3" value="self"><label for="cp-3">Self-managed</label></div>
+        <div class="pill"><input type="radio" name="compliance" id="cp-4" value="irregular"><label for="cp-4">Not done regularly</label></div>
+      </div>
+    </div>
+
     <!-- service-only -->
     <div class="q-block hidden" id="q-appts">
       <div class="q-label">How do you manage client appointments or projects?</div>
@@ -998,13 +1008,8 @@
 
     <div class="q-block">
       <div class="q-label">Which AI use cases would benefit you most? <span class="opt-tag">(select all that apply)</span></div>
-      <div class="pills">
-        <div class="pill"><input type="checkbox" name="aiwant" id="aw-1" value="financial_reports"><label for="aw-1">Auto-generate financial reports</label></div>
-        <div class="pill"><input type="checkbox" name="aiwant" id="aw-2" value="stock_predict"><label for="aw-2">Predict stock needs</label></div>
-        <div class="pill"><input type="checkbox" name="aiwant" id="aw-3" value="top_customers"><label for="aw-3">Identify top customers automatically</label></div>
-        <div class="pill"><input type="checkbox" name="aiwant" id="aw-4" value="late_payment"><label for="aw-4">Spot late payment risks early</label></div>
-        <div class="pill"><input type="checkbox" name="aiwant" id="aw-5" value="slow_products"><label for="aw-5">Insights on slow-moving products</label></div>
-        <div class="pill"><input type="checkbox" name="aiwant" id="aw-6" value="pl_realtime"><label for="aw-6">Real-time P&L visibility</label></div>
+      <div class="pills" id="ai-use-cases">
+        <!-- populated dynamically based on selected industry -->
       </div>
     </div>
 
@@ -1059,28 +1064,6 @@
         <div class="pill"><input type="radio" name="brand" id="br-1" value="professional"><label for="br-1">Yes, professional</label></div>
         <div class="pill"><input type="radio" name="brand" id="br-2" value="somewhat"><label for="br-2">Somewhat</label></div>
         <div class="pill"><input type="radio" name="brand" id="br-3" value="no"><label for="br-3">No</label></div>
-      </div>
-    </div>
-
-    <div class="q-block">
-      <div class="q-label">What type of content do you currently produce? <span class="opt-tag">(select all)</span></div>
-      <div class="pills">
-        <div class="pill"><input type="checkbox" name="content" id="co-1" value="promo"><label for="co-1">Promotional posts</label></div>
-        <div class="pill"><input type="checkbox" name="content" id="co-2" value="photos"><label for="co-2">Product photos</label></div>
-        <div class="pill"><input type="checkbox" name="content" id="co-3" value="videos"><label for="co-3">Videos</label></div>
-        <div class="pill"><input type="checkbox" name="content" id="co-4" value="reels"><label for="co-4">Reels</label></div>
-        <div class="pill"><input type="checkbox" name="content" id="co-5" value="testimonials"><label for="co-5">Testimonials</label></div>
-        <div class="pill"><input type="checkbox" name="content" id="co-6" value="none"><label for="co-6">None yet</label></div>
-      </div>
-    </div>
-
-    <div class="q-block">
-      <div class="q-label">Have you ever run a WhatsApp broadcast campaign to your customers?</div>
-      <div class="pills">
-        <div class="pill"><input type="radio" name="wabcast" id="wb-1" value="regularly"><label for="wb-1">Yes, regularly</label></div>
-        <div class="pill"><input type="radio" name="wabcast" id="wb-2" value="tried"><label for="wb-2">Tried once</label></div>
-        <div class="pill"><input type="radio" name="wabcast" id="wb-3" value="no"><label for="wb-3">No</label></div>
-        <div class="pill"><input type="radio" name="wabcast" id="wb-4" value="didnt_know"><label for="wb-4">Didn't know this was possible</label></div>
       </div>
     </div>
 
@@ -1257,7 +1240,7 @@ function next(from) {
     adaptS2();
   }
   if (from === 2) collectS2();
-  if (from === 3) collectS3();
+  if (from === 3) { collectS3(); populateAIUseCases(); }
   if (from === 4) collectS4();
 
   const to = from + 1;
@@ -1341,11 +1324,12 @@ function adaptS2() {
 // COLLECT SECTION 2
 // ─────────────────────────────────────────────────
 function collectS2() {
-  answers.website   = radio('website');
-  answers.software  = radio('software');
-  answers.salestrack= radio('salestrack');
-  answers.social    = radio('social');
-  answers.ads       = radio('ads');
+  answers.website    = radio('website');
+  answers.software   = radio('software');
+  answers.salestrack = radio('salestrack');
+  answers.social     = radio('social');
+  answers.ads        = radio('ads');
+  answers.compliance = radio('compliance');
 
   if (profile.isService) {
     answers.appointments = radio('appts');
@@ -1390,12 +1374,10 @@ function collectS4() {
 // SUBMIT
 // ─────────────────────────────────────────────────
 function submitForm() {
-  answers.postfreq  = radio('postfreq');
-  answers.brand     = radio('brand');
-  answers.content   = checkboxes('content');
-  answers.wabcast   = radio('wabcast');
-  answers.custsource= radio('custsource');
-  answers.reviews   = radio('reviews');
+  answers.postfreq   = radio('postfreq');
+  answers.brand      = radio('brand');
+  answers.custsource = radio('custsource');
+  answers.reviews    = radio('reviews');
 
   calcScores();
 
@@ -1435,6 +1417,12 @@ function calcScores() {
   if      (answers.salestrack === 'automated') scores.finance += 25;
   else if (answers.salestrack === 'manual')    scores.finance += 10;
 
+  // compliance scoring
+  if      (answers.compliance === 'ca')        scores.finance += 18;
+  else if (answers.compliance === 'software')  scores.finance += 12;
+  else if (answers.compliance === 'self')      scores.finance +=  5;
+  else if (answers.compliance === 'irregular') scores.finance -=  8;
+
   if (profile.isMature) {
     if      (answers.profitvis === 'yes')    scores.finance += 20;
     else if (answers.profitvis === 'roughly') scores.finance += 8;
@@ -1452,9 +1440,6 @@ function calcScores() {
   const pfScore = { daily:20, '2_3_week':14, once_week:8, rarely:3, never:0 };
   scores.marketing += pfScore[answers.postfreq] || 0;
 
-  if      (answers.wabcast === 'regularly') scores.marketing += 12;
-  else if (answers.wabcast === 'tried')     scores.marketing +=  5;
-
   if (answers.custsource !== 'dont_know') scores.marketing += 6;
   if      (answers.reviews === 'active')          scores.marketing += 10;
   else if (answers.reviews === 'collect_no_use')  scores.marketing +=  4;
@@ -1468,9 +1453,6 @@ function calcScores() {
 
   if      (answers.brand === 'professional') scores.digitalPresence += 20;
   else if (answers.brand === 'somewhat')     scores.digitalPresence +=  8;
-
-  const contentTypes = (answers.content || []).filter(c => c !== 'none').length;
-  scores.digitalPresence += Math.min(18, contentTypes * 4);
 
   // --- AI readiness ---
   if      (answers.aitools === 'several') scores.aiReadiness += 40;
@@ -1501,6 +1483,120 @@ function calcScores() {
   Object.keys(scores).forEach(k => {
     scores[k] = Math.min(95, Math.max(5, Math.round(scores[k])));
   });
+}
+
+// ─────────────────────────────────────────────────
+// INDUSTRY-SPECIFIC AI USE CASES
+// ─────────────────────────────────────────────────
+const AI_USE_CASES = {
+  retail:       [
+    { value:'demand_forecast',   label:'Predict which products will sell next month' },
+    { value:'stock_replenish',   label:'Auto stock replenishment alerts' },
+    { value:'top_customers',     label:'Identify top customers automatically' },
+    { value:'pricing_opt',       label:'Dynamic pricing optimization' },
+    { value:'late_payment',      label:'Spot late payment risks early' },
+    { value:'pl_realtime',       label:'Real-time P&L visibility' },
+  ],
+  healthcare:   [
+    { value:'appt_opt',          label:'Appointment scheduling optimization' },
+    { value:'patient_followup',  label:'Automated patient follow-up reminders' },
+    { value:'billing_auto',      label:'Medical billing & claims automation' },
+    { value:'drug_inventory',    label:'Drug & supply inventory prediction' },
+    { value:'late_payment',      label:'Outstanding payment alerts' },
+    { value:'pl_realtime',       label:'Real-time revenue & cost visibility' },
+  ],
+  construction: [
+    { value:'cost_forecast',     label:'Project cost overrun prediction' },
+    { value:'material_demand',   label:'Material demand & procurement alerts' },
+    { value:'site_productivity', label:'Site productivity tracking' },
+    { value:'tender_price',      label:'Tender pricing AI assistance' },
+    { value:'late_payment',      label:'Client payment delay alerts' },
+    { value:'pl_realtime',       label:'Real-time project P&L' },
+  ],
+  food_bev:     [
+    { value:'menu_profit',       label:'Menu item profitability analysis' },
+    { value:'waste_reduction',   label:'Food waste prediction & reduction' },
+    { value:'demand_forecast',   label:'Peak hour & daily demand forecasting' },
+    { value:'supplier_cost',     label:'Supplier cost optimization alerts' },
+    { value:'top_customers',     label:'Identify high-value repeat customers' },
+    { value:'pl_realtime',       label:'Real-time P&L visibility' },
+  ],
+  education:    [
+    { value:'enrollment_trend',  label:'Enrollment & batch demand forecasting' },
+    { value:'fee_collection',    label:'Fee collection automation & alerts' },
+    { value:'dropout_risk',      label:'Student dropout risk alerts' },
+    { value:'course_demand',     label:'Course popularity & demand analysis' },
+    { value:'pl_realtime',       label:'Real-time revenue visibility' },
+    { value:'top_customers',     label:'Identify highest-value batches' },
+  ],
+  real_estate:  [
+    { value:'lead_scoring',      label:'Lead scoring & priority follow-up' },
+    { value:'market_trend',      label:'Property market trend analysis' },
+    { value:'rental_yield',      label:'Rental yield & vacancy optimization' },
+    { value:'client_followup',   label:'Automated client follow-up reminders' },
+    { value:'late_payment',      label:'Rent & EMI delay early warnings' },
+    { value:'pl_realtime',       label:'Real-time portfolio P&L' },
+  ],
+  manufacturing:[
+    { value:'production_yield',  label:'Production yield & defect prediction' },
+    { value:'machine_downtime',  label:'Machine breakdown early warning' },
+    { value:'material_demand',   label:'Raw material demand forecasting' },
+    { value:'quality_detect',    label:'Quality defect pattern detection' },
+    { value:'late_payment',      label:'Customer payment delay alerts' },
+    { value:'pl_realtime',       label:'Real-time production cost visibility' },
+  ],
+  logistics:    [
+    { value:'route_opt',         label:'Delivery route & cost optimization' },
+    { value:'delay_predict',     label:'Delay & bottleneck prediction' },
+    { value:'fleet_maint',       label:'Fleet maintenance alerts' },
+    { value:'demand_forecast',   label:'Customer demand forecasting' },
+    { value:'fuel_cost',         label:'Fuel cost analysis & savings' },
+    { value:'late_payment',      label:'Invoice payment delay alerts' },
+  ],
+  it:           [
+    { value:'project_profit',    label:'Project profitability analysis' },
+    { value:'resource_util',     label:'Team resource utilization insights' },
+    { value:'churn_predict',     label:'Client churn prediction' },
+    { value:'billing_auto',      label:'Automated billing & timesheet alerts' },
+    { value:'late_payment',      label:'Invoice payment delay alerts' },
+    { value:'pl_realtime',       label:'Real-time revenue & margin visibility' },
+  ],
+  hospitality:  [
+    { value:'room_forecast',     label:'Room demand & occupancy forecasting' },
+    { value:'guest_personal',    label:'Guest preference & upsell insights' },
+    { value:'fb_cost',           label:'F&B cost & waste optimization' },
+    { value:'staff_schedule',    label:'Smart staff scheduling by demand' },
+    { value:'top_customers',     label:'Identify highest-value guests' },
+    { value:'pl_realtime',       label:'Real-time revenue & cost visibility' },
+  ],
+  trading:      [
+    { value:'price_forecast',    label:'Price trend & margin forecasting' },
+    { value:'stock_replenish',   label:'Inventory turnover optimization' },
+    { value:'supplier_risk',     label:'Supplier reliability scoring' },
+    { value:'late_payment',      label:'Customer payment behavior alerts' },
+    { value:'top_customers',     label:'Identify most profitable customers' },
+    { value:'pl_realtime',       label:'Real-time P&L visibility' },
+  ],
+  other:        [
+    { value:'financial_reports', label:'Auto-generate financial reports' },
+    { value:'stock_predict',     label:'Predict demand / inventory needs' },
+    { value:'top_customers',     label:'Identify top customers automatically' },
+    { value:'late_payment',      label:'Spot late payment risks early' },
+    { value:'slow_products',     label:'Insights on slow-moving items' },
+    { value:'pl_realtime',       label:'Real-time P&L visibility' },
+  ],
+};
+
+function populateAIUseCases() {
+  const industry = answers.industry || 'other';
+  const cases    = AI_USE_CASES[industry] || AI_USE_CASES.other;
+  const container = document.getElementById('ai-use-cases');
+  container.innerHTML = cases.map((c, i) =>
+    `<div class="pill">
+      <input type="checkbox" name="aiwant" id="aw-${i}" value="${c.value}">
+      <label for="aw-${i}">${c.label}</label>
+    </div>`
+  ).join('');
 }
 
 // ─────────────────────────────────────────────────
@@ -1577,6 +1673,7 @@ COMPANY PROFILE:
 TOOLS IN USE:
 - Management software: ${answers.software || 'none'}
 - Sales/expense tracking: ${answers.salestrack || 'none'}
+- Tax compliance (GST/income tax/audit): ${answers.compliance || 'not answered'}
 - Website: ${answers.website || 'none'}
 - Social media: ${answers.social || 'none'}
 - Paid advertising: ${answers.ads || 'none'}
