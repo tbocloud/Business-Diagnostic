@@ -1764,6 +1764,11 @@
 ============================================================ -->
   <script>
     // ─────────────────────────────────────────────────
+    // CONFIG — change this if the folder name changes
+    // ─────────────────────────────────────────────────
+    const API_BASE = '/Business_Diagnostic_TBO/api';
+
+    // ─────────────────────────────────────────────────
     // STATE
     // ─────────────────────────────────────────────────
     const answers = {};
@@ -1784,7 +1789,7 @@
       document.getElementById('loading-state').style.display = 'block';
 
       try {
-        const res = await fetch('api/get-result.php?id=' + encodeURIComponent(id));
+        const res = await fetch(API_BASE + '/get-result.php?id=' + encodeURIComponent(id));
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         renderResults(data);
@@ -2194,7 +2199,7 @@
     async function callAPI() {
       const prompt = buildPrompt();
       try {
-        const res = await fetch('api/analyze.php', {
+        const res = await fetch(API_BASE + '/analyze.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, scores, answers })
@@ -2612,7 +2617,7 @@ RULES:
       btnEl.textContent = 'Saving…';
 
       try {
-        const res = await fetch('/api/save-phone.php', {
+        const res = await fetch(API_BASE + '/save-phone.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ submissionId, phone: '+' + countryCode + rawPhone })
