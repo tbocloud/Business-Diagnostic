@@ -635,7 +635,7 @@
 
 <!-- HEADER -->
 <header class="header">
-  <div class="logo">Your<span>Brand</span></div>
+  <div class="logo">Team<span> Back Office</span></div>
   <div class="header-tag">Free Business Diagnostic · 5 min</div>
 </header>
 
@@ -1159,12 +1159,13 @@
       <div class="solution-cards" id="solution-cards"></div>
     </div>
 
-    <!-- whatsapp share -->
+    <!-- phone save + share block -->
     <div class="wa-share-block" id="wa-share-block">
-      <div class="wa-share-icon">📲</div>
-      <h3 class="wa-share-title">Send this report to your client</h3>
-      <p class="wa-share-sub">Enter the client's WhatsApp number below. Their diagnostic summary will open in WhatsApp — ready to send from your device in one tap.</p>
 
+      <!-- Save phone number -->
+      <div class="wa-share-icon">📲</div>
+      <h3 class="wa-share-title">Save Your Contact</h3>
+      <p class="wa-share-sub">Enter your WhatsApp number so we can follow up with tailored solutions for your business.</p>
       <div class="wa-input-row">
         <div class="wa-country-select-wrap">
           <select id="wa-country-code" class="wa-country-select">
@@ -1188,17 +1189,27 @@
           type="tel"
           id="wa-phone"
           class="wa-phone-input"
-          placeholder="Client's WhatsApp number"
+          placeholder="Your WhatsApp number"
           maxlength="15"
           inputmode="numeric"
         />
-        <button class="btn-wa-send" id="btn-wa-send" onclick="sendToWhatsApp()">
-          Send to Client
+        <button class="btn-wa-send" id="btn-save-phone" onclick="savePhone()">
+          Save Number
         </button>
       </div>
-
       <div id="wa-status" class="wa-status hidden"></div>
-      <p class="wa-note">The client's number is saved securely and used only to send this diagnostic report.</p>
+      <p class="wa-note">Your number is saved securely and used only to follow up on this diagnostic.</p>
+
+      <!-- Divider -->
+      <div style="border-top:1px solid rgba(255,255,255,0.15);margin:22px 0;"></div>
+
+      <!-- Share results -->
+      <h3 class="wa-share-title" style="font-size:1.05rem;">Share This Report</h3>
+      <p class="wa-share-sub" style="margin-bottom:14px;">Share your diagnostic summary via WhatsApp, email, or any app.</p>
+      <button class="btn-wa-send" onclick="shareResults()" style="height:46px;padding:0 28px;border-radius:10px;font-size:0.95rem;">
+        Share Results
+      </button>
+
     </div>
 
     <!-- contact -->
@@ -1206,9 +1217,9 @@
       <h3>Ready to fix this?</h3>
       <p>Talk to us. No sales pitch — just clarity on what your business needs next.</p>
       <div class="contact-btns">
-        <a href="https://wa.me/YOUR_WHATSAPP_NUMBER" class="btn-wa" target="_blank">💬 WhatsApp Us</a>
-        <a href="YOUR_WEBSITE_URL" class="btn-web" target="_blank">🌐 Our Website</a>
-        <a href="mailto:YOUR_EMAIL" class="btn-email">✉️ Send Enquiry</a>
+        <a href="https://wa.me/919747888220" class="btn-wa" target="_blank">💬 WhatsApp Us</a>
+        <a href="https://teambackoffice.com/" class="btn-web" target="_blank">🌐 Our Website</a>
+        <a href="mailto:india@teambackoffice.com" class="btn-email">✉️ Send Enquiry</a>
       </div>
       <p class="contact-disclaimer">Your answers are used only to generate this diagnostic. We do not store or share your data.</p>
     </div>
@@ -2013,45 +2024,45 @@ function catName(cat) {
 }
 
 // ─────────────────────────────────────────────────
-// WHATSAPP SHARE
+// SAVE PHONE NUMBER
 // ─────────────────────────────────────────────────
-async function sendToWhatsApp() {
+async function savePhone() {
   const countryCode = document.getElementById('wa-country-code').value;
   const rawPhone    = document.getElementById('wa-phone').value.trim().replace(/\D/g, '');
-  const statusEl    = document.getElementById('wa-status');
-  const btnEl       = document.getElementById('btn-wa-send');
+  const btnEl       = document.getElementById('btn-save-phone');
 
-  // validate
   if (!rawPhone || rawPhone.length < 7) {
     showWaStatus('Please enter a valid WhatsApp number.', 'error');
     return;
   }
 
-  const fullPhone = countryCode + rawPhone;   // e.g. 919876543210
+  btnEl.disabled    = true;
+  btnEl.textContent = 'Saving…';
 
-  btnEl.disabled       = true;
-  btnEl.textContent    = 'Opening WhatsApp…';
-  statusEl.className   = 'wa-status hidden';
-
-  // ── Save phone number to DB ───────────────────────
   try {
     await fetch('api/save-phone.php', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ submissionId, phone: '+' + fullPhone })
+      body:    JSON.stringify({ submissionId, phone: '+' + countryCode + rawPhone })
     });
+    showWaStatus('✅ Number saved! We\'ll be in touch soon.', 'success');
+    btnEl.textContent = 'Saved ✓';
   } catch (e) {
-    // non-fatal — still open WhatsApp
-    console.warn('Phone save failed:', e.message);
+    showWaStatus('Could not save number. Please try again.', 'error');
+    btnEl.disabled    = false;
+    btnEl.textContent = 'Save Number';
   }
+}
 
-  // ── Build WhatsApp message ────────────────────────
-  const avg    = Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/5);
-  const rating = document.getElementById('res-rating').textContent || '–';
+// ─────────────────────────────────────────────────
+// SHARE RESULTS
+// ─────────────────────────────────────────────────
+async function shareResults() {
+  const avg      = Math.round(Object.values(scores).reduce((a,b)=>a+b,0)/5);
+  const rating   = document.getElementById('res-rating').textContent   || '–';
   const headline = document.getElementById('res-headline').textContent || '';
-  const name   = answers.companyName || 'Your Business';
+  const name     = answers.companyName || 'Your Business';
 
-  // top 3 low-scoring gaps as bullet lines
   const catLabels = { operations:'Operations', finance:'Finance', marketing:'Marketing', digitalPresence:'Digital Presence', aiReadiness:'AI Readiness' };
   const gapLines  = Object.entries(scores)
     .sort((a,b) => a[1]-b[1])
@@ -2059,29 +2070,36 @@ async function sendToWhatsApp() {
     .map(([k,v]) => `• ${catLabels[k]}: ${v}/100`)
     .join('\n');
 
-  const message =
-`📊 *Business Diagnostic Report*
-${name}
+  const text =
+`📊 Business Diagnostic Report — ${name}
 
-*${headline}*
+${headline}
 
-Overall Rating: *${rating}*
-Average Health Score: *${avg}/100*
+Overall Rating: ${rating}
+Average Health Score: ${avg}/100
 
 Weakest Areas:
 ${gapLines}
 
 ─────────────────
-Want to fix this? Talk to us:
-https://wa.me/YOUR_WHATSAPP_NUMBER`;
+Want to fix this?
+Team Back Office: https://teambackoffice.com/`;
 
-  // ── Open WhatsApp ─────────────────────────────────
-  const waUrl = `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
-  window.open(waUrl, '_blank');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Business Diagnostic Report', text });
+      showWaStatus('✅ Shared successfully!', 'success');
+    } catch (e) {
+      if (e.name !== 'AbortError') fallbackShare(text);
+    }
+  } else {
+    fallbackShare(text);
+  }
+}
 
-  showWaStatus('✅ WhatsApp opened! Your diagnostic summary is ready to send.', 'success');
-  btnEl.disabled    = false;
-  btnEl.textContent = 'Send via WhatsApp';
+function fallbackShare(text) {
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  showWaStatus('✅ Opening share…', 'success');
 }
 
 function showWaStatus(msg, type) {
