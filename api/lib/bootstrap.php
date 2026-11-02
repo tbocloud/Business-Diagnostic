@@ -6,6 +6,11 @@
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) { http_response_code(404); exit; }
 
+// Every endpoint answers in JSON. A PHP notice or deprecation printed into the response would
+// corrupt it (and reveal server paths), so errors go to the log, never to the browser.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 // ── Config: api/config.php (same as before) or environment variables ──
 // If DB_HOST is set in the environment (local development, Docker, Railway), the environment
 // wins and config.php is not loaded at all — so running locally can never touch the live
@@ -28,10 +33,14 @@ function db(): PDO {
     static $pdo = null;
     if ($pdo === null) {
         $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+        // rowCount() must report rows MATCHED, not rows changed (lead.php relies on this).
+        // PHP 8.4 renamed the constant (the old name warns on 8.5+); use whichever exists.
+        $foundRows = defined('Pdo\Mysql::ATTR_FOUND_ROWS') ? constant('Pdo\Mysql::ATTR_FOUND_ROWS') : constant('PDO::MYSQL_ATTR_FOUND_ROWS');
         $pdo = new PDO($dsn, DB_USER, DB_PASSWORD, [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
+            $foundRows                   => true,
         ]);
         // MySQL and PHP agree on the time zone, so iso() turns DB times into correct ISO 8601.
         $pdo->exec("SET time_zone = '" . date('P') . "'");

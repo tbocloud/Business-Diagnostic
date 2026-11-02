@@ -73,8 +73,8 @@ define('DB_USER',     '...');
 define('DB_PASSWORD', '...');
 define('DB_NAME',     'biz_diagnostic');
 
-// Only needed once, to create the first admin (12+ characters, anything you like).
-// You can delete this line after the admin account exists.
+// Only needed once, to create the first admin. Use a long RANDOM code (e.g. 20+ random
+// characters from a password manager) — not a word or a name. Delete the line afterwards.
 define('SETUP_TOKEN', 'choose-a-long-secret');
 ```
 

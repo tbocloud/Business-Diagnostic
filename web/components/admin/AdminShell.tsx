@@ -147,7 +147,7 @@ function SetupLocked({ onRetry }: { onRetry: () => void }) {
     <Centered title="One step before the first login">
       <p className="text-[14px] leading-relaxed text-ink-2">
         To create the admin account safely, add a secret setup code to <code className="rounded bg-paper-deep px-1">api/config.php</code> on
-        the server (12+ characters, anything you like):
+        the server — a long random code (20+ characters from a password manager is ideal):
       </p>
       <pre className="mt-3 whitespace-pre-wrap break-all rounded-xl bg-ink px-3 py-2.5 text-left text-[12.5px] text-white">
         define(&apos;SETUP_TOKEN&apos;, &apos;choose-a-long-secret&apos;);

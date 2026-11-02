@@ -24,6 +24,11 @@ run(function () {
     }
 
     $body = json_body();
+    // Once an admin exists, setup is closed — say so before even looking at the code,
+    // so the code can't be confirmed by guessing afterwards.
+    if ((int) db()->query('SELECT COUNT(*) FROM bde_users')->fetchColumn() > 0) fail('Setup is already done — log in instead', 403);
+    // Parallel guessing is capped per IP (usleep alone only slows one request at a time).
+    rate_limit('setup', 10, 3600);
     if (!$ready) fail("Setup is locked. Add define('SETUP_TOKEN', '…'); (12+ characters) to api/config.php first.", 403);
     if (!hash_equals($token, (string) ($body['setupToken'] ?? ''))) {
         usleep(400000);

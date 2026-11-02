@@ -95,15 +95,28 @@ run(function () {
         }
 
         if ($sets) {
+            // The access check above used the row as it was when we read it. Another BDE may have
+            // taken the lead since, so a BDE's write only applies if the lead is STILL unassigned
+            // or theirs — checked by the UPDATE itself, atomically.
+            $where = 'id = ?';
             $params[] = $id;
+            if ($user['role'] !== 'admin') {
+                $where .= ' AND (assigned_to IS NULL OR assigned_to = ?)';
+                $params[] = $user['id'];
+            }
             $pdo = db();
             $pdo->beginTransaction();
             try {
-                $pdo->prepare('UPDATE submissions SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+                $stmt = $pdo->prepare('UPDATE submissions SET ' . implode(', ', $sets) . " WHERE $where");
+                $stmt->execute($params);
+                if ($stmt->rowCount() !== 1) { // matched rows (MYSQL_ATTR_FOUND_ROWS)
+                    $pdo->rollBack();
+                    fail('Someone else just took this lead — reload to see the latest.', 409);
+                }
                 foreach ($activity as [$kind, $text]) add_activity($id, $user['id'], $kind, $text);
                 $pdo->commit();
             } catch (Throwable $e) {
-                $pdo->rollBack();
+                if ($pdo->inTransaction()) $pdo->rollBack();
                 throw $e;
             }
             $row = fetch_lead_row($id);
