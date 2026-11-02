@@ -1,0 +1,240 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   Design tokens — "a premium health check-up report".
+   RGB channels so Tailwind opacity modifiers work.
+   Data & status colors were validated with the dataviz palette
+   validator against the ivory card (#FFFDF9) and paper (#F7F3EC).
+   ───────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  --paper: 247 243 236; /* #F7F3EC warm ivory */
+  --paper-deep: 239 233 222; /* #EFE9DE */
+  --card: 255 253 249; /* #FFFDF9 */
+  --line: 230 223 211; /* #E6DFD3 hairline */
+  --line-strong: 205 196 181; /* #CDC4B5 */
+
+  --ink: 27 35 48; /* #1B2330 */
+  --ink-2: 74 83 97; /* #4A5361 */
+  --muted: 95 103 116; /* #5F6774 — 5.2:1 on paper */
+
+  --brand: 19 78 74; /* #134E4A forest-teal */
+  --brand-deep: 13 58 55; /* #0D3A37 */
+  --brand-soft: 222 236 233; /* #DEECE9 */
+
+  /* Saffron-orange, kept ΔE ≥ 15 (OKLab) from "Needs a push" yellow and "Priority gap" red */
+  --accent: 229 138 46; /* #E58A2E saffron */
+  --accent-soft: 252 230 211; /* #FCE6D3 */
+  --accent-ink: 154 77 18; /* #9A4D12 — accent as text on light (≥ 5:1) */
+  --accent-light: 244 181 122; /* #F4B57A — accent as text on teal / ink (≥ 5.3:1) */
+
+  /* The "You" data series: brand teal stepped into the chart lightness band */
+  --data: 2 147 147; /* #029393 */
+  --data-track: 214 236 234; /* #D6ECEA same-ramp track */
+
+  /* Status — reserved for section status, always with icon + label */
+  --ok: 47 158 31; /* #2F9E1F */
+  --ok-ink: 30 107 18; /* #1E6B12 */
+  --ok-soft: 234 244 228; /* #EAF4E4 */
+  --warn: 239 200 31; /* #EFC81F golden — clearly apart from the saffron accent */
+  --warn-ink: 110 88 0; /* #6E5800 */
+  --warn-soft: 251 243 207; /* #FBF3CF */
+  --risk: 210 72 58; /* #D2483A */
+  --risk-ink: 164 48 31; /* #A4301F */
+  --risk-soft: 251 231 227; /* #FBE7E3 */
+  --na: 169 163 151; /* #A9A397 */
+  --na-ink: 94 90 82; /* #5E5A52 */
+  --na-soft: 239 237 232; /* #EFEDE8 */
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    /* Keyboard focus never lands behind the sticky header or the form's sticky "Save & continue" bar. */
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: 7rem;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  @media (min-width: 768px) {
+    body {
+      font-size: 16px;
+    }
+  }
+  ::selection {
+    background: rgb(var(--accent) / 0.35);
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  input,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Fraunces with a soft, warm cut */
+  .font-display {
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 60, 'WONK' 0;
+  }
+  .font-display-italic {
+    font-style: italic;
+    font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  }
+
+  /* Paper grain — a whisper of texture so the page feels printed */
+  .paper-grain {
+    position: relative;
+    isolation: isolate;
+  }
+  .paper-grain::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.42  0 0 0 0 0.36  0 0 0 0 0.26  0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-muted;
+  }
+
+  .field {
+    @apply block w-full rounded-xl border border-line-strong bg-card px-4 py-3 text-[16px] text-ink shadow-[inset_0_1px_0_rgb(var(--ink)/0.03)] transition-colors placeholder:text-muted/80;
+  }
+  .field:hover {
+    @apply border-ink-2/50;
+  }
+  .field:focus {
+    @apply border-brand outline-none ring-2 ring-brand/20;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, rgb(var(--paper-deep)) 0%, rgb(var(--card)) 50%, rgb(var(--paper-deep)) 100%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+
+  .hairline {
+    @apply border-line;
+  }
+}
+
+/* Check-mark draw on section completion */
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.check-draw circle {
+  stroke-dasharray: 190;
+  stroke-dashoffset: 190;
+  animation: check-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+.check-draw path {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: check-draw 420ms cubic-bezier(0.65, 0, 0.35, 1) 560ms forwards;
+}
+
+/* Bars grow from the baseline on first paint */
+.bar-grow {
+  animation: bar-grow 900ms cubic-bezier(0.2, 0.7, 0.2, 1) 150ms both;
+}
+@keyframes bar-grow {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Collapsible area notes: hidden on screen when closed, always shown in print */
+.collapsible[data-open='false'] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Print: a clean report on white paper ─────────────────── */
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    font-size: 11pt;
+  }
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    /* Print the finished state, never a mid-animation frame */
+    animation: none !important;
+    transition: none !important;
+  }
+  .paper-grain::before,
+  .no-print {
+    display: none !important;
+  }
+  .collapsible[data-open='false'] {
+    display: grid !important;
+  }
+  .gauge-fill {
+    stroke-dasharray: var(--gauge-final) 100px !important;
+  }
+  /* Headings never strand at a page bottom: the header can't split, and an invisible
+     ~150px tail (cancelled out by a negative margin) travels with it, so a heading too
+     close to the bottom moves to the next page together with the start of its content. */
+  .print-keep-with-next {
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+  }
+  .print-keep-with-next::after {
+    content: '';
+    display: block;
+    height: 150px;
+    margin-bottom: -150px;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-plain {
+    box-shadow: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+.print-only {
+  display: none;
+}

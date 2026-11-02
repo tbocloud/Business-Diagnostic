@@ -1,94 +1,145 @@
-# BizDiagnostic
+# Business Health Check
 
-AI-powered business health check tool. Businesses fill a 5-section form, get instant visual scores across Operations, Finance, Marketing, Digital Presence and AI Readiness — plus a GPT-generated gap analysis and matched service recommendations.
+A guided business diagnostic for small and growing businesses, with a **BDE panel** for the sales team.
 
----
+- **Clients** answer short multiple-choice questions, one page per section. Every question has "Other — type your own" and a Skip, and whole sections can be skipped too.
+- **Their report** shows a health score, each area against a fair target for their business stage, *the real gap* (what they think the problem is vs. what the answers show), strengths, gaps, a 7/30/90-day plan and notes.
+- **BDEs** log into `/admin/` to work the leads. They can set a status, take ownership, set follow-up dates, keep notes, and present the report to the owner in **review mode**, with presenter notes on the BDE's own screen.
 
-## Requirements
-
-- PHP 8.0+
-- MySQL 5.7+ or MariaDB
-- phpMyAdmin (recommended)
+There is no AI and no per-report cost: scoring is rule-based, so the same answers always give the same report.
 
 ---
 
-## Step 1 — Create the Database
+## How it fits together
 
-1. Open phpMyAdmin (usually `http://localhost/phpmyadmin`)
-2. In the left sidebar click **New**
-3. Enter database name: `biz_diagnostic` → click **Create**
-
----
-
-## Step 2 — Create the Table
-
-1. Select `biz_diagnostic` in the left sidebar
-2. Click the **SQL** tab
-3. Paste the following and click **Go**:
-
-```sql
-CREATE TABLE submissions (
-  id                 INT AUTO_INCREMENT PRIMARY KEY,
-  created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  company_name       VARCHAR(255),
-  industry           VARCHAR(100),
-  business_age       VARCHAR(50),
-  business_type      VARCHAR(100),
-  team_size          VARCHAR(50),
-  score_operations   TINYINT,
-  score_finance      TINYINT,
-  score_marketing    TINYINT,
-  score_digital      TINYINT,
-  score_ai_readiness TINYINT,
-  score_average      TINYINT,
-  overall_rating     VARCHAR(50),
-  phone_number       VARCHAR(30),
-  gpt_output         JSON,
-  raw_answers        JSON
-);
+```
+/                      ← the website: static files built from web/ (index.html, check/, results/, admin/, _next/ …)
+/api/                  ← PHP JSON API (MySQL)
+   submit.php          ← saves a finished check-up
+   save-contact.php    ← "Call me back" phone/email from the results page
+   admin/*.php         ← BDE panel: login, leads, lead, notes, team
+   lib/                ← shared helpers (not reachable from the web)
+   config.php          ← your DB credentials (git-ignored, never committed)
+/db/                   ← SQL to run in phpMyAdmin
+/web/                  ← source code of the website (Next.js + TypeScript + Tailwind)
 ```
 
+The host only needs **PHP 8 + MySQL** — the same as before. No Node.js is needed on the server: the website is pre-built into plain HTML/JS/CSS files that sit at the repository root.
+
 ---
 
-## Step 3 — Fill in config.php
+## Install / upgrade
 
-Open `public/api/config.php` and fill in your values:
+### 1. Database
+
+In phpMyAdmin, select the `biz_diagnostic` database and open the **SQL** tab.
+
+| Situation | Run |
+|---|---|
+| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql` **once** |
+| **Fresh install** | `db/000_create_submissions.sql`, then `db/001_health_check_v2.sql` |
+
+The upgrade keeps every existing row. Old submissions are marked **legacy** and still show in the panel with their old scores and AI analysis.
+
+What it adds:
+
+- **On `submissions`:** `source`, `contact_name`, `email`, `biggest_headache`, `real_gap`, `section_scores`, `results_summary`, the pipeline fields `status`, `assigned_to` and `follow_up_on`, plus `edit_token` and `updated_at`.
+- **New tables:** `bde_users` (team logins) and `lead_notes` (notes and activity history).
+
+New check-ups still fill the original columns where they map, so anything that reads them keeps working:
+
+| Original column | Filled from |
+|---|---|
+| `company_name`, `industry`, `team_size` | the "About your business" answers |
+| `business_age` | business stage |
+| `score_operations`, `score_finance`, `score_marketing` | the matching areas |
+| `score_digital` | Tools & Technology |
+| `score_average` | overall score |
+| `overall_rating` | band, e.g. "Needs attention" |
+| `phone_number` | from "Call me back" |
+| `raw_answers` | `{ version: 2, profile, answers }` |
+
+`score_ai_readiness` and `gpt_output` stay empty for new rows.
+
+### 2. Credentials
+
+`api/config.php` works exactly as before (it is git-ignored):
 
 ```php
-define('OPENAI_API_KEY', 'sk-...');      // Your OpenAI API key
-
-define('DB_HOST',     'localhost');       // Usually localhost
-define('DB_PORT',     3306);              // Default MySQL port
-define('DB_USER',     'root');            // Your phpMyAdmin username
-define('DB_PASSWORD', '');               // Your phpMyAdmin password
-define('DB_NAME',     'biz_diagnostic'); // Database name from Step 1
+<?php
+define('DB_HOST',     'localhost');
+define('DB_PORT',     3306);
+define('DB_USER',     '...');
+define('DB_PASSWORD', '...');
+define('DB_NAME',     'biz_diagnostic');
 ```
 
-| Field       | Where to find it in phpMyAdmin                           |
-|-------------|----------------------------------------------------------|
-| DB_HOST     | Always `localhost` for local setup                      |
-| DB_PORT     | Always `3306` unless changed during MySQL install       |
-| DB_USER     | Shown in the top-right corner of phpMyAdmin             |
-| DB_PASSWORD | Password set when installing MySQL / MAMP / XAMPP       |
-| DB_NAME     | The database created in Step 1                          |
+The OpenAI key is no longer used and can be removed. Anything missing falls back to environment variables with the same names (see `.env.example`).
 
-> `config.php` is in `.gitignore` and will never be pushed to GitHub.
+### 3. Upload / pull
+
+Deploy the repository root as you do today. Run the SQL **before** the new files go live.
+
+### 4. Create the first admin
+
+Open **`/admin/`**. When no accounts exist yet, it asks you to create the admin account. After that, the page is a normal login. Add BDEs under **Team**.
 
 ---
 
-## Step 4 — Run Locally
+## The BDE panel (`/admin/`)
+
+| | Admin | BDE |
+|---|---|---|
+| Sees | every lead | their own leads + unassigned ones |
+| Assign leads | to anyone | can **take** an unassigned lead or **hand back** their own |
+| Status, follow-up date, contact details, notes | ✓ | ✓ (on leads they can see) |
+| Team: add members, roles, deactivate, reset passwords | ✓ | — |
+
+- **Pipeline:** New → Contacted → Meeting booked → Proposal sent → Won / Lost.
+- **History:** every change is logged automatically in the lead's history (who and when), next to the notes.
+- **Review mode:** "Start review" opens the client's report as full-screen slides. Press **N** for presenter notes ("Say…" / "Ask them…"). "Open presenter view" puts the notes and next slide in a second window, so the owner only sees the slides.
+- **Deactivating a BDE:** they are logged out and their open leads go back to the unassigned pool.
+- **Login:** 5 wrong passwords lock that account for 15 minutes.
+- **Old link:** the old `submissions.php` (which was public) now redirects to the panel.
+
+---
+
+## Changing the website
+
+The source lives in `web/`. Typical edits:
+
+| What | Where |
+|---|---|
+| Brand name, tagline, contact buttons (email / WhatsApp / booking link) | `web/lib/brand.ts` |
+| Questions, options, scores, advice text | `web/lib/questions.ts` |
+| Sections and BDE discovery questions | `web/lib/sections.ts` |
+| Industries, stages, headaches, goals, stage targets | `web/lib/profile.ts` |
+| Scoring rules, real-gap logic, key points | `web/lib/engine.ts` |
+
+After a change, rebuild and copy the site to the root, then commit:
 
 ```bash
-php -S localhost:3000 -t /path/to/public
+cd web
+npm install          # first time only
+npm run deploy       # builds web/ and copies the site to the repo root
 ```
 
-Open: **http://localhost:3000**
+### Run everything locally
 
-Keep the terminal open — closing it stops the server.
+```bash
+cd web && npm run deploy && cd ..
+php -S localhost:8080            # from the repo root; uses api/config.php
+```
+
+Open http://localhost:8080. For quick UI-only work, `cd web && npm run dev` (http://localhost:3100) is faster. Saving to the database needs the PHP server, though.
 
 ---
 
-## Step 5 — Verify
+## Security notes
 
-After submitting the form, open phpMyAdmin → `biz_diagnostic` → `submissions` → **Browse** to confirm the row was saved.
-
+- `api/config.php` is git-ignored. The repository is public, so never commit credentials.
+- **Panel logins:** passwords are hashed with `password_hash`.
+- **Sessions:** cookies are `HttpOnly` + `SameSite=Strict` (+ `Secure` on HTTPS).
+- **API requests:** every write needs a JSON body, which also protects against cross-site requests.
+- **Client edits:** a client can only update their own submission, using a random token kept in their browser. Only a hash of it is stored.
+- **Blocked paths:** `.htaccess` blocks `web/`, `db/`, `.git/` and `api/lib/` from the web and turns off directory listings.
