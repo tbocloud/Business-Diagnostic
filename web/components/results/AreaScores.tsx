@@ -196,6 +196,11 @@ export function AreaScores({
                   <th scope="col" className="px-2 py-2 text-right font-semibold">Target</th>
                   <th scope="col" className="px-2 py-2 font-semibold">Status</th>
                   <th scope="col" className="px-2 py-2 text-right font-semibold">Answered</th>
+                  {onOpenArea && (
+                    <th scope="col" className="no-print px-2 py-2 text-right font-semibold">
+                      Next steps
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -210,6 +215,19 @@ export function AreaScores({
                     <td className="px-2 py-2.5 text-right tabular-nums">
                       {s.answered} of {s.asked}
                     </td>
+                    {onOpenArea && (
+                      <td className="no-print px-2 py-1.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onOpenArea(s.id)}
+                          aria-label={`What to do next: ${s.title}`}
+                          className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-brand/30 bg-card px-3 text-[13px] font-semibold text-brand hover:border-brand hover:bg-brand-soft/50"
+                        >
+                          What to do
+                          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

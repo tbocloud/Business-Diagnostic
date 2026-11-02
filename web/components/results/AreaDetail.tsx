@@ -30,12 +30,16 @@ export function AreaDetail({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  // Closing normally returns focus to the "What to do" button that opened the panel.
+  // "Get help" sends focus to the callback form instead, so it turns this off.
+  const restoreFocus = useRef(true);
   const open = !!section;
 
   // Focus, Esc to close, keep Tab inside, no page scroll behind, focus back to the trigger.
   useEffect(() => {
     if (!open) return;
     const trigger = document.activeElement as HTMLElement | null;
+    restoreFocus.current = true;
     closeRef.current?.focus();
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -58,7 +62,7 @@ export function AreaDetail({
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
-      trigger?.focus?.();
+      if (restoreFocus.current) trigger?.focus?.();
     };
   }, [open, onClose]);
 
@@ -184,7 +188,13 @@ export function AreaDetail({
 
         {onGetHelp && assessed && needs.length > 0 && (
           <div className="border-t border-line bg-card px-5 py-3.5 sm:px-6">
-            <Button className="w-full" onClick={onGetHelp}>
+            <Button
+              className="w-full"
+              onClick={() => {
+                restoreFocus.current = false;
+                onGetHelp();
+              }}
+            >
               <PhoneCall className="h-4 w-4" aria-hidden="true" />
               Get help with {s.short.toLowerCase()}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
