@@ -49,8 +49,12 @@ run(function () {
         'answered'      => int_or_null($summary['answered'] ?? null, 0, 1000),
         'asked'         => int_or_null($summary['asked'] ?? null, 0, 1000),
         'topGaps'       => $topGaps,
-        // Our services that fix the gaps (erp / marketing / ai), most relevant first
-        'services'      => array_values(array_intersect(is_array($summary['services'] ?? null) ? $summary['services'] : [], ['erp', 'marketing', 'ai'])),
+        // Our services that fix the gaps (erp / marketing / ai), most relevant first.
+        // Only known ids as strings (nested arrays etc. are dropped without PHP warnings), each once.
+        'services'      => array_values(array_unique(array_filter(
+            is_array($summary['services'] ?? null) ? $summary['services'] : [],
+            static fn ($service): bool => is_string($service) && in_array($service, ['erp', 'marketing', 'ai'], true)
+        ))),
     ];
 
     $company = str_or_null($profile['businessName'] ?? null, 255);
@@ -79,7 +83,7 @@ run(function () {
     $pdo = db();
 
     // ── Re-save: the client edited their answers and finished again ──
-    $id    = isset($body['submissionId']) ? (int) $body['submissionId'] : 0;
+    $id    = id_from($body['submissionId'] ?? null);
     $token = is_string($body['token'] ?? null) ? $body['token'] : '';
     if ($id > 0 && $token !== '') {
         $stmt = $pdo->prepare('SELECT edit_token FROM submissions WHERE id = ? LIMIT 1');

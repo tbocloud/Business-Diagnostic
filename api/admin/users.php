@@ -33,7 +33,7 @@ run(function () {
                 ->execute([$name, $email, password_hash($pass, PASSWORD_DEFAULT), $role]);
 
         } elseif ($action === 'update') {
-            $id = (int) ($body['id'] ?? 0);
+            $id = id_from($body['id'] ?? null);
             $target = find_user($id);
             $sets = [];
             $params = [];
@@ -66,7 +66,7 @@ run(function () {
             }
 
         } elseif ($action === 'reset_password') {
-            $target = find_user((int) ($body['id'] ?? 0));
+            $target = find_user(id_from($body['id'] ?? null));
             $pass = is_string($body['password'] ?? null) ? $body['password'] : '';
             if (strlen($pass) < 8) fail('Use a password of at least 8 characters');
             db()->prepare('UPDATE bde_users SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?')

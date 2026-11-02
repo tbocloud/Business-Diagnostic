@@ -93,7 +93,7 @@ run(function () {
     $stmt->execute($listParams);
     $total = (int) $stmt->fetchColumn();
 
-    $page = max(1, (int) ($_GET['page'] ?? 1));
+    $page = max(1, id_from($_GET['page'] ?? 1));
     $offset = ($page - 1) * PER_PAGE;
     $stmt = db()->prepare('SELECT ' . LEAD_LIST_COLUMNS . " FROM submissions WHERE $listWhere ORDER BY $order LIMIT " . PER_PAGE . " OFFSET $offset");
     $stmt->execute($listParams);

@@ -98,6 +98,16 @@ function str_or_null($v, int $max): ?string {
     return function_exists('mb_substr') ? mb_substr($v, 0, $max) : substr($v, 0, $max);
 }
 
+/**
+ * A record id from the request: a positive integer, or a string of digits. Anything else
+ * (arrays, floats, "5abc"…) gives 0. A plain (int) cast would turn [5] into 1.
+ */
+function id_from($v): int {
+    if (is_int($v)) return $v > 0 ? $v : 0;
+    if (is_string($v) && $v !== '' && ctype_digit($v) && strlen($v) <= 10) return (int) $v;
+    return 0;
+}
+
 function int_or_null($v, int $min = 0, int $max = 100): ?int {
     if (!is_int($v) && !(is_float($v) && floor($v) === $v)) return null;
     $v = (int) $v;

@@ -14,7 +14,7 @@ run(function () {
     rate_limit('contact', 20, 3600);
     $body = json_body(MAX_PUBLIC_BODY_BYTES);
 
-    $id    = (int) ($body['submissionId'] ?? 0);
+    $id    = id_from($body['submissionId'] ?? null);
     $token = is_string($body['token'] ?? null) ? $body['token'] : '';
     $name  = str_or_null($body['name'] ?? null, 120);
     $phone = str_or_null($body['phone'] ?? null, 30);

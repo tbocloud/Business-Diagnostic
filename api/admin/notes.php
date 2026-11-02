@@ -9,7 +9,7 @@ run(function () {
     $user = require_user();
     $body = json_body();
 
-    $id = (int) ($body['submissionId'] ?? 0);
+    $id = id_from($body['submissionId'] ?? null);
     $text = str_or_null($body['body'] ?? null, 4000);
     if ($id <= 0) fail('Missing lead id');
     if ($text === null) fail('Write a note first');

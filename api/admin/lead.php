@@ -21,7 +21,7 @@ run(function () {
     $user = require_user();
 
     $body = $method === 'POST' ? json_body() : [];
-    $id = (int) ($method === 'POST' ? ($body['id'] ?? 0) : ($_GET['id'] ?? 0));
+    $id = id_from($method === 'POST' ? ($body['id'] ?? null) : ($_GET['id'] ?? null));
     if ($id <= 0) fail('Missing lead id');
 
     $row = fetch_lead_row($id);
@@ -46,7 +46,8 @@ run(function () {
         }
 
         if (array_key_exists('assignedTo', $body)) {
-            $to = $body['assignedTo'] === null ? null : (int) $body['assignedTo'];
+            $to = $body['assignedTo'] === null ? null : id_from($body['assignedTo']);
+            if ($to === 0) fail('Unknown team member');
             $current = $row['assigned_to'] !== null ? (int) $row['assigned_to'] : null;
             if ($to !== $current) {
                 if ($user['role'] !== 'admin') {
