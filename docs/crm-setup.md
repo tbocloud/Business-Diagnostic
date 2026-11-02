@@ -46,10 +46,12 @@ Only `report_link` is mandatory, because clients can leave the other details bla
 
 ---
 
-## Part B: what we set up on the website
+## Part B: what we set up on the website (go-live checklist)
+
+When the CRM admin has sent the URL, API key and secret:
 
 1. **Database:** run `db/002_crm_link.sql` once in phpMyAdmin, after `001`.
-2. **Settings:** add to `api/config.php`:
+2. **Settings:** on the server, copy the CRM lines from `api/config.example.php` into `api/config.php` and fill them in:
    ```php
    define('CRM_URL',        'https://crm.yourcompany.com');
    define('CRM_API_KEY',    '…');
@@ -57,13 +59,25 @@ Only `report_link` is mandatory, because clients can leave the other details bla
    define('SITE_URL',       'https://<this website>');   // used to build the report links
    // define('CRM_DOCTYPE', 'Business Health Check');   // only if the DocType has another name
    ```
-   With `CRM_URL` empty, the connection is switched off and nothing is sent.
-3. **Retry job:** add a cron job in cPanel → Cron Jobs, every 15 minutes. It re-sends anything that failed, for example while the CRM was down:
+   - `api/config.php` is git-ignored, so the keys never go to GitHub.
+   - With `CRM_URL` empty, the connection is switched off and nothing is sent.
+3. **Check the connection** from the server terminal (cPanel → Terminal):
+   ```bash
+   php api/cron/check-crm.php                  # read-only: URL, key, permission, DocType, the 5 fields, database
+   php api/cron/check-crm.php --create-test    # also creates one "Connection test — please delete" record
+   ```
+   - Every problem comes with a plain-language fix, e.g. "The API key or secret is wrong", "The API user is missing Create permission", or "The DocType needs exactly: business_name, contact_name, phone, email, report_link".
+   - It ends with **"All good — the CRM connection is ready."**
+4. **Retry job:** add a cron job in cPanel → Cron Jobs, every 15 minutes. It re-sends anything that failed, for example while the CRM was down:
    ```
    */15 * * * *  php /home/<user>/public_html/api/cron/sync-crm.php
    ```
    - The first run also sends the check-ups from the **last 30 days** that aren't in the CRM yet.
    - Old-form (GPT) submissions are never sent.
+5. **Try it once for real:**
+   - Complete a check on the live site and press "Call me back".
+   - In the CRM, a new **Business Health Check** record should appear with the phone number.
+   - Its **Report Link** should open the report.
 
 ### How it behaves
 - **The client never waits for the CRM:** they get their report first, and the CRM is updated just after.

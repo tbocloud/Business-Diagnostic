@@ -51,5 +51,11 @@ if ($method === 'PUT' && $name !== null) {
     file_put_contents($store, json_encode($db, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     $send(200, ['data' => $db[$name]]);
 }
-if ($method === 'GET') $send(200, ['data' => $name === null ? array_values($db) : ($db[$name] ?? null)]);
+if ($method === 'GET') {
+    // Like Frappe: asking for a field the DocType doesn't have is an error.
+    $want = json_decode((string) ($_GET['fields'] ?? '[]'), true) ?: [];
+    $missing = array_diff($want, array_merge(['name'], $allowed));
+    if ($missing) $send(417, ['exc_type' => 'DataError', 'exception' => 'Field not permitted in query: ' . implode(', ', $missing)]);
+    $send(200, ['data' => $name === null ? array_values($db) : ($db[$name] ?? null)]);
+}
 $send(405, ['exc_type' => 'MethodNotAllowed']);

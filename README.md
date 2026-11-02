@@ -63,7 +63,7 @@ New check-ups still fill the original columns where they map, so anything that r
 
 ### 2. Credentials
 
-`api/config.php` works exactly as before (it is git-ignored):
+`api/config.php` works exactly as before (it is git-ignored). `api/config.example.php` is a template with every setting:
 
 ```php
 <?php
