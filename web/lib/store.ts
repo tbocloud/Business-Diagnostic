@@ -58,6 +58,26 @@ const initial = {
 
 const withDone = (done: SectionId[], id: SectionId) => (done.includes(id) ? done : [...done, id]);
 
+/**
+ * Mark the section's visible questions as skipped where `shouldSkip` says so.
+ * Skipping can change which questions are visible — clearing "We don't really do marketing"
+ * reveals "Do you know which marketing works?" — so repeat until nothing new appears.
+ */
+function markSkipped(sectionId: SectionId, profile: Profile, answers: Answers, shouldSkip: (a: Answer | undefined) => boolean): Answers {
+  const next = { ...answers };
+  for (let pass = 0; pass < 10; pass++) {
+    let changed = false;
+    for (const q of questionsFor(sectionId, { profile, answers: next })) {
+      if (shouldSkip(next[q.id])) {
+        next[q.id] = { selected: [], skipped: true };
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return next;
+}
+
 export const useCheck = create<CheckState>()(
   persist(
     (set, get) => ({
@@ -83,18 +103,12 @@ export const useCheck = create<CheckState>()(
         }),
 
       finishSection: (sectionId) => {
-        const { profile, answers } = get();
-        const next = { ...answers };
-        for (const q of questionsFor(sectionId, { profile, answers })) {
-          if (!isAnswered(next[q.id])) next[q.id] = { selected: [], skipped: true };
-        }
+        const next = markSkipped(sectionId, get().profile, get().answers, (a) => !isAnswered(a));
         set((s) => ({ answers: next, doneSections: withDone(s.doneSections, sectionId) }));
       },
 
       skipSection: (sectionId) => {
-        const { profile, answers } = get();
-        const next = { ...answers };
-        for (const q of questionsFor(sectionId, { profile, answers })) next[q.id] = { selected: [], skipped: true };
+        const next = markSkipped(sectionId, get().profile, get().answers, (a) => !a?.skipped);
         set((s) => ({ answers: next, doneSections: withDone(s.doneSections, sectionId) }));
       },
 

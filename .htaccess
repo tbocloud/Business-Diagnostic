@@ -8,7 +8,7 @@ ErrorDocument 404 /404.html
 # Source code, SQL and repo files are not part of the website.
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteRule ^(web|db|\.git|\.github|\.claude)(/|$) - [F,L]
+  RewriteRule ^(web|db|dev|\.git|\.github|\.claude)(/|$) - [F,L]
   RewriteRule ^(README\.md|\.env.*|.*\.code-workspace|.*\.sql)$ - [F,L]
 </IfModule>
 

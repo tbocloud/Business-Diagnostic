@@ -7,8 +7,11 @@
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) { http_response_code(404); exit; }
 
 // ── Config: api/config.php (same as before) or environment variables ──
+// If DB_HOST is set in the environment (local development, Docker, Railway), the environment
+// wins and config.php is not loaded at all — so running locally can never touch the live
+// database by accident. On the normal server no DB_* variables are set, so config.php is used.
 $configFile = __DIR__ . '/../config.php';
-if (is_file($configFile)) require_once $configFile;
+if (getenv('DB_HOST') === false && is_file($configFile)) require_once $configFile;
 foreach (['DB_HOST' => 'localhost', 'DB_PORT' => 3306, 'DB_USER' => 'root', 'DB_PASSWORD' => '', 'DB_NAME' => 'biz_diagnostic'] as $key => $fallback) {
     if (!defined($key)) {
         $env = getenv($key);

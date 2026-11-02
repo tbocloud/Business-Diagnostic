@@ -132,12 +132,18 @@ npm run deploy       # builds web/ and copies the site to the repo root
 
 ### Run everything locally
 
+Needs Docker and PHP 8 (`brew install php`):
+
 ```bash
-cd web && npm run deploy && cd ..
-php -S localhost:8080            # from the repo root; uses api/config.php
+./dev/run-local.sh
 ```
 
-Open http://localhost:8080. For quick UI-only work, `cd web && npm run dev` (http://localhost:3100) is faster. Saving to the database needs the PHP server, though.
+- **Website:** http://localhost:8080
+- **BDE panel:** http://localhost:8080/admin/ — setup code for the first admin: `local-setup-code`
+
+The script starts a local MariaDB in Docker. It creates the tables from `db/*.sql` on the first run and keeps the data between runs. Because it sets `DB_HOST`, `api/config.php` (the live database) is **never** loaded. To reset the local data: `docker rm -f bhc-local-db && docker volume rm bhc-local-data`.
+
+For quick UI-only work, `cd web && npm run dev` (http://localhost:3100) is faster. Saving to the database needs the PHP server, though.
 
 ---
 
@@ -153,4 +159,4 @@ Open http://localhost:8080. For quick UI-only work, `cd web && npm run dev` (htt
 - **Public form limits:** at most 30 submissions and 20 "call me back" requests per hour from one IP address, and a 64 KB request size limit.
 - **History:** every change to a lead, including contact edits, is written in the same transaction as the change itself.
 - **Untrusted report data:** share links and stored answers are cleaned before scoring, so a tampered link shows "link looks incomplete" instead of crashing.
-- **Blocked paths:** `.htaccess` blocks `web/`, `db/`, `.git/` and `api/lib/` from the web and turns off directory listings.
+- **Blocked paths:** `.htaccess` blocks `web/`, `db/`, `dev/`, `.git/` and `api/lib/` from the web and turns off directory listings.
