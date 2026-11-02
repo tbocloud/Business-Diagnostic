@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/lib/bootstrap.php';
+require_once __DIR__ . '/lib/crm.php';
 
 const SECTION_IDS = ['sales', 'marketing', 'customers', 'operations', 'finance', 'team', 'technology', 'strategy'];
 
@@ -93,7 +94,8 @@ run(function () {
             $sets = implode(', ', array_map(fn($c) => "$c = ?", array_keys($values)));
             $pdo->prepare("UPDATE submissions SET $sets WHERE id = ?")->execute([...array_values($values), $id]);
             add_activity($id, null, 'system', 'Client updated their answers. New score: ' . ($clean['overall'] ?? '–') . '/100.');
-            json_out(['submissionId' => $id, 'token' => $token]);
+            // Reply first, then update the CRM record (e.g. a changed business name).
+            respond_then(['submissionId' => $id, 'token' => $token], 200, fn() => crm_sync_submission($id));
         }
         // Unknown id or wrong token → fall through and save as a new submission.
     }
@@ -101,6 +103,7 @@ run(function () {
     $token = bin2hex(random_bytes(16));
     $values['source']       = 'health_check_v2';
     $values['edit_token']   = token_hash($token);
+    $values['report_key']   = new_report_key();
     $values['contact_name'] = $owner;
     $cols = implode(', ', array_keys($values));
     $marks = implode(', ', array_fill(0, count($values), '?'));
@@ -108,7 +111,8 @@ run(function () {
     $newId = (int) $pdo->lastInsertId();
     add_activity($newId, null, 'system', 'Health check submitted. Score: ' . ($clean['overall'] ?? '–') . '/100.');
 
-    json_out(['submissionId' => $newId, 'token' => $token], 201);
+    // Reply first, then create the record in the CRM with the report link.
+    respond_then(['submissionId' => $newId, 'token' => $token], 201, fn() => crm_sync_submission($newId));
 });
 
 /** Only a hash of the client's token is stored. */

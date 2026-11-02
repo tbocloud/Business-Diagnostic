@@ -36,8 +36,8 @@ In phpMyAdmin, select the `biz_diagnostic` database and open the **SQL** tab.
 
 | Situation | Run |
 |---|---|
-| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql` **once** |
-| **Fresh install** | `db/000_create_submissions.sql`, then `db/001_health_check_v2.sql` |
+| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, then `db/002_crm_link.sql`, **once each** |
+| **Fresh install** | `db/000_create_submissions.sql`, `db/001_health_check_v2.sql`, then `db/002_crm_link.sql` |
 
 The upgrade keeps every existing row. Old submissions are marked **legacy** and still show in the panel with their old scores and AI analysis.
 
@@ -110,6 +110,14 @@ The setup code matters because the repository is public: without it, anyone who 
 - **Old link:** the old `submissions.php` (which was public) now redirects to the panel.
 
 ---
+
+## Connecting to the CRM (ERPNext)
+
+Every finished check creates a **Business Health Check** record in the CRM with the business name, contact, phone, email and **a link to the client's report**. "Call me back" updates the same record. Setup for both sides is in **[docs/crm-setup.md](docs/crm-setup.md)**:
+- the DocType and API user to create in ERPNext
+- the settings for `api/config.php`
+- `db/002_crm_link.sql`
+- the retry cron job
 
 ## Changing the website
 

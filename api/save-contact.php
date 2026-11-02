@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/lib/bootstrap.php';
+require_once __DIR__ . '/lib/crm.php';
 
 run(function () {
     require_method('POST');
@@ -41,5 +42,6 @@ run(function () {
     $parts = array_filter([$phone ? "phone $phone" : null, $email ? "email $email" : null]);
     add_activity($id, null, 'system', 'Client asked to be contacted (' . implode(', ', $parts) . ').');
 
-    json_out(['ok' => true]);
+    // Reply first, then put the phone / email on the CRM record.
+    respond_then(['ok' => true], 200, fn() => crm_sync_submission($id));
 });

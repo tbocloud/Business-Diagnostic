@@ -17,7 +17,13 @@ ini_set('log_errors', '1');
 // database by accident. On the normal server no DB_* variables are set, so config.php is used.
 $configFile = __DIR__ . '/../config.php';
 if (getenv('DB_HOST') === false && is_file($configFile)) require_once $configFile;
-foreach (['DB_HOST' => 'localhost', 'DB_PORT' => 3306, 'DB_USER' => 'root', 'DB_PASSWORD' => '', 'DB_NAME' => 'biz_diagnostic'] as $key => $fallback) {
+foreach ([
+    'DB_HOST' => 'localhost', 'DB_PORT' => 3306, 'DB_USER' => 'root', 'DB_PASSWORD' => '', 'DB_NAME' => 'biz_diagnostic',
+    // CRM (ERPNext) connection — leave CRM_URL empty to switch it off. See docs/crm-setup.md.
+    'CRM_URL' => '', 'CRM_API_KEY' => '', 'CRM_API_SECRET' => '', 'CRM_DOCTYPE' => 'Business Health Check',
+    // Public address of this site, used to build the report links sent to the CRM.
+    'SITE_URL' => '',
+] as $key => $fallback) {
     if (!defined($key)) {
         $env = getenv($key);
         define($key, $env !== false ? $env : $fallback);
@@ -63,6 +69,31 @@ function json_out($data, int $status = 200): void {
     header('Cache-Control: no-store');
     header('X-Content-Type-Options: nosniff');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+/**
+ * Send the JSON response to the browser NOW, then keep working (e.g. talk to the CRM),
+ * so a slow or unreachable CRM never makes the client wait. Where the server can't
+ * detach (rare), $after simply runs before the response is sent.
+ */
+function respond_then($data, int $status, callable $after): void {
+    $body = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $canDetach = function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request');
+    if (!$canDetach) {
+        try { $after(); } catch (Throwable $e) { error_log('After-response task failed: ' . $e->getMessage()); }
+        json_out($data, $status);
+    }
+    ignore_user_abort(true);
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Length: ' . strlen($body));
+    echo $body;
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    else litespeed_finish_request();
+    try { $after(); } catch (Throwable $e) { error_log('After-response task failed: ' . $e->getMessage()); }
     exit;
 }
 

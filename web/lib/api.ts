@@ -79,6 +79,9 @@ export const publicApi = {
     call<{ submissionId: number; token: string }>('submit.php', { body }),
   saveContact: (body: { submissionId: number; token: string; name?: string; phone?: string; email?: string }) =>
     call<{ ok: true }>('save-contact.php', { body }),
+  /** A report opened from its short link (/results/?id=…&k=…), e.g. from the CRM. */
+  report: (id: string, k: string) =>
+    call<{ profile: unknown; answers: unknown; completedAt: string | null }>('report.php', { query: { id, k } }),
 };
 
 // ── Admin panel ─────────────────────────────────────────────

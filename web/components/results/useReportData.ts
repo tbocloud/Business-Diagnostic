@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { computeResults, isAnswered } from '@/lib/engine';
-import { readSharedFromHash } from '@/lib/share';
+import { publicApi } from '@/lib/api';
+import { normalizeReport } from '@/lib/normalize';
+import { encodeResults, readSharedFromHash } from '@/lib/share';
 import { useCheck } from '@/lib/store';
 import type { Answers, Profile, Results } from '@/lib/types';
 
@@ -46,6 +48,31 @@ export function useReportData(): ReportData {
   const [shared, setShared] = useState<Shared | null>(null);
 
   useEffect(() => {
+    // Short link from the CRM: /results/?id=123&k=… — load that report from the server.
+    // It then behaves exactly like a shared (#r=) link, so review mode and links keep working.
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const k = params.get('k');
+    if (id && k && !/[#&]r=/.test(window.location.hash)) {
+      let live = true;
+      publicApi
+        .report(id, k)
+        .then((d) => {
+          if (!live) return;
+          const report = normalizeReport(d.profile, d.answers);
+          if (!report) return setShared({ kind: 'invalid' });
+          const completedAt = d.completedAt ?? undefined;
+          setShared({
+            kind: 'ok',
+            data: { ...report, completedAt },
+            hash: `#r=${encodeResults(report.profile, report.answers, completedAt)}`,
+          });
+        })
+        .catch(() => live && setShared({ kind: 'invalid' }));
+      return () => {
+        live = false;
+      };
+    }
     const update = () => setShared(readShared());
     update();
     window.addEventListener('hashchange', update);
