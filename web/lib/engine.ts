@@ -1,3 +1,4 @@
+import { BRAND } from './brand';
 import { fill, HEADACHES, headacheLabel, industryLabel, levelLabel, targetFor, teamLabel } from './profile';
 import { QUESTION_BY_ID, questionsFor } from './questions';
 import { SECTIONS, SECTION_BY_ID } from './sections';
@@ -17,6 +18,8 @@ import type {
   SectionId,
   SectionResult,
   SectionStatus,
+  ServiceId,
+  ServiceRecommendation,
 } from './types';
 
 // ── Thresholds ──────────────────────────────────────────────
@@ -61,6 +64,8 @@ function makeInsight(q: Question, a: Answer, score: number, profile: Profile): I
     answerLabel: answerLabel(q, a, profile),
     why: fill(q.why, profile),
     fix: fill(q.fix, profile),
+    steps: (q.steps ?? []).map((t) => fill(t, profile)),
+    solution: q.solution ? { services: q.solution.services, text: fill(q.solution.text, profile) } : undefined,
     effort: q.effort,
     score,
     weight,
@@ -374,7 +379,11 @@ function buildKeyPoints(args: {
       section: issue.section,
       said: issue.answerLabel,
       detail: issue.why,
-      talk: `Asked “${fill(QUESTION_BY_ID[issue.questionId]?.text ?? '', profile)}”, they answered “${issue.answerLabel}”. Connect it to money or time — what is this costing them each month?`,
+      talk:
+        `Asked “${fill(QUESTION_BY_ID[issue.questionId]?.text ?? '', profile)}”, they answered “${issue.answerLabel}”. Connect it to money or time — what is this costing them each month?` +
+        (issue.solution
+          ? ` Then position ${issue.solution.services.map((id) => BRAND.services[id].name).join(' + ')}: ${issue.solution.text}`
+          : ''),
       ask: ask(issue.section, sameAsGap ? 1 : 0),
     });
   }
@@ -440,6 +449,22 @@ function buildKeyPoints(args: {
   return points;
 }
 
+// ── Services that fix the client's gaps ─────────────────────
+
+function recommendServices(gaps: Insight[], watch: Insight[]): ServiceRecommendation[] {
+  const recs = new Map<ServiceId, ServiceRecommendation>();
+  for (const i of [...gaps, ...watch]) {
+    for (const id of i.solution?.services ?? []) {
+      const rec = recs.get(id) ?? { id, weight: 0, items: [] };
+      // A real gap counts fully; "could be stronger" counts half.
+      rec.weight += i.kind === 'gap' ? i.severity : i.severity / 2;
+      rec.items.push({ questionId: i.questionId, title: i.title, sectionTitle: SECTION_BY_ID[i.section].title, kind: i.kind === 'gap' ? 'gap' : 'watch' });
+      recs.set(id, rec);
+    }
+  }
+  return [...recs.values()].sort((a, b) => b.weight - a.weight);
+}
+
 // ── Everything together ─────────────────────────────────────
 
 export function computeResults(profile: Profile, answers: Answers): Results {
@@ -476,6 +501,7 @@ export function computeResults(profile: Profile, answers: Answers): Results {
         (quickWins ? ` — ${quickWins} of them ${quickWins === 1 ? 'is a quick win' : 'are quick wins'} you can start this week.` : '.');
 
   const potential = potentialScore(sections);
+  const services = recommendServices(allGaps, allWatch);
   const keyPoints = buildKeyPoints({
     profile,
     overall,
@@ -506,6 +532,7 @@ export function computeResults(profile: Profile, answers: Answers): Results {
     summary,
     keyPoints,
     potential,
+    services,
     stats: {
       asked,
       answered,

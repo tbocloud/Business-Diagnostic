@@ -1,7 +1,9 @@
 import {
   AlertTriangle,
   BedDouble,
+  Boxes,
   Briefcase,
+  Bot,
   Building2,
   CircleDot,
   Clock,
@@ -47,7 +49,9 @@ import {
 const ICONS: Record<string, LucideIcon> = {
   AlertTriangle,
   BedDouble,
+  Boxes,
   Briefcase,
+  Bot,
   Building2,
   Clock,
   Compass,

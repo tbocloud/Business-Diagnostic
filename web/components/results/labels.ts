@@ -44,3 +44,13 @@ export function stagePhrase(levelLabel: string): string {
 export function profileLine(...labels: string[]): string {
   return labels.filter((l) => l && l !== NOT_SPECIFIED).join(' · ');
 }
+
+/** "Fixes 20 gaps · strengthens 15 more" — real gaps and "could be stronger" counted separately. */
+export function serviceImpact(items: { kind: 'gap' | 'watch' }[], style: 'long' | 'short' = 'long'): string {
+  const gaps = items.filter((i) => i.kind === 'gap').length;
+  const watch = items.length - gaps;
+  const g = `${gaps} ${gaps === 1 ? 'gap' : 'gaps'}`;
+  if (style === 'short') return gaps ? `fixes ${g}` : `strengthens ${watch} ${watch === 1 ? 'area' : 'areas'}`;
+  if (!gaps) return `Strengthens ${watch} ${watch === 1 ? 'thing' : 'things'} in your business`;
+  return `Fixes ${g}${watch ? ` · strengthens ${watch} more` : ''}`;
+}

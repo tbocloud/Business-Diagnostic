@@ -49,6 +49,8 @@ run(function () {
         'answered'      => int_or_null($summary['answered'] ?? null, 0, 1000),
         'asked'         => int_or_null($summary['asked'] ?? null, 0, 1000),
         'topGaps'       => $topGaps,
+        // Our services that fix the gaps (erp / marketing / ai), most relevant first
+        'services'      => array_values(array_intersect(is_array($summary['services'] ?? null) ? $summary['services'] : [], ['erp', 'marketing', 'ai'])),
     ];
 
     $company = str_or_null($profile['businessName'] ?? null, 255);

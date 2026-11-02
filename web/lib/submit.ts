@@ -29,6 +29,7 @@ export function buildSummary(profile: Profile, results: Results): SubmissionSumm
     answered: results.stats.answered,
     asked: results.stats.asked,
     topGaps: results.gaps.slice(0, 5).map((g) => g.title),
+    services: results.services.map((s) => s.id),
   };
 }
 

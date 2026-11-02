@@ -70,6 +70,8 @@ export interface SubmissionSummary {
   answered: number;
   asked: number;
   topGaps: string[];
+  /** Our services that fix the gaps, most relevant first. */
+  services: string[];
 }
 
 export const publicApi = {

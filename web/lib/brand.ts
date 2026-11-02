@@ -10,6 +10,31 @@ export const BRAND = {
   product: 'Business Health Check',
   tagline: 'Find the real gaps in your business — in about 10 minutes.',
 
+  /**
+   * What we offer. Gaps in the report link to these where they fit, so the client sees how
+   * each service solves THEIR problem — and the BDE sees what to pitch.
+   */
+  services: {
+    erp: {
+      name: 'ERP',
+      long: 'ERP (ERPNext)',
+      icon: 'Boxes',
+      pitch: 'One system for sales & CRM, stock, billing & accounts, HR & payroll and projects — set up for how you work.',
+    },
+    marketing: {
+      name: 'Digital Marketing',
+      long: 'Digital Marketing',
+      icon: 'Megaphone',
+      pitch: 'A website that brings enquiries, Google & Maps visibility, social media and WhatsApp campaigns.',
+    },
+    ai: {
+      name: 'AI',
+      long: 'AI Solutions',
+      icon: 'Bot',
+      pitch: 'AI assistants that answer customers 24/7, automation that removes manual work, and AI insights & forecasts inside your ERP.',
+    },
+  },
+
   /** "Talk to us" call-to-action at the end of the results. Leave a value empty to hide that button. */
   contact: {
     heading: 'Want help closing these gaps?',

@@ -44,6 +44,14 @@ export const QUESTIONS: Question[] = [
     why: "The biggest early risk is building something people won't pay enough for. Paying {customers} are the only real proof.",
     fix: 'Talk to 10 potential {customers} this month and ask them to commit — a pre-order, deposit or paid trial — not just say they like it.',
     effort: 'medium',
+    steps: [
+      "Turn the 3 most common objections into a clear one-page offer and test it with 5 new prospects.",
+      "Keep one list of every conversation: who, what they said, and whether they paid.",
+    ],
+    solution: {
+      services: ['marketing'],
+      text: "Digital marketing tests demand fast and cheaply. A simple landing page, a small Google or Instagram ad test and a WhatsApp enquiry button show within weeks which offer people actually pay for — before you spend big.",
+    },
   },
   {
     id: 'sales_source',
@@ -62,6 +70,14 @@ export const QUESTIONS: Question[] = [
     why: "If that one source slows down, your sales drop with it — and you can't switch on growth when you need it.",
     fix: 'List where your last 20 {customers} came from, then pick one new channel to test properly for 30 days.',
     effort: 'medium',
+    steps: [
+      "Pick one new channel that suits your {customers} (Google, Instagram, WhatsApp, partners) and set a 30-day target for it.",
+      "Record where every new {customer} comes from, so you can see which channel is really growing.",
+    ],
+    solution: {
+      services: ['marketing', 'erp'],
+      text: "Digital marketing builds steady new channels — Google search & Maps, social media and WhatsApp campaigns — so one source drying up never stops your sales. Your ERP's CRM tags every lead with its source, so you can see exactly what's working.",
+    },
   },
   {
     id: 'sales_predict',
@@ -80,6 +96,14 @@ export const QUESTIONS: Question[] = [
     why: "Without knowing what's coming, it's hard to plan stock, staff or spending — and cash surprises follow.",
     fix: 'Start a simple weekly sheet: expected orders or deals, their value, and how likely each one is.',
     effort: 'quick',
+    steps: [
+      "Put every open deal or order in one pipeline with its stage, value and expected date.",
+      "Every Monday, compare last week's forecast with what actually came in — and adjust.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "An ERP sales pipeline shows every open deal, its value and stage in one screen — the forecast builds itself from your real data. AI forecasting then predicts next month's sales from your history and warns you early when you're falling behind.",
+    },
   },
   {
     id: 'sales_followup',
@@ -98,6 +122,14 @@ export const QUESTIONS: Question[] = [
     why: 'Most sales happen after several follow-ups. Without them, you pay to attract interest and then let it walk away.',
     fix: 'Write a simple 3-step follow-up (day 1, day 3, day 7) and track every open enquiry against it.',
     effort: 'quick',
+    steps: [
+      "Write 3 short follow-up messages (day 1, day 3, day 7) that anyone in the team can reuse.",
+      "Make a rule: no open enquiry goes more than 2 days without contact.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "An ERP CRM creates a follow-up reminder for every enquiry automatically, so nothing slips through. AI drafts the follow-up messages and can send WhatsApp or email nudges at the right moment — interested {customers} stop going cold.",
+    },
   },
   {
     id: 'sales_tracking',
@@ -115,6 +147,14 @@ export const QUESTIONS: Question[] = [
     why: "When information lives in chats and memory, leads get forgotten and you can't see what is actually working.",
     fix: 'Move every open enquiry into one shared sheet or free CRM this week — name, need, value, next step, date.',
     effort: 'quick',
+    steps: [
+      "Agree what to record for every enquiry: name, need, value, source and next step.",
+      "Review the full list together for 15 minutes every week.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "A CRM inside your ERP keeps every enquiry, quote, order and invoice for a {customer} in one record. The whole team sees the history and the next step — nothing lives in WhatsApp chats or someone's memory any more.",
+    },
   },
   {
     id: 'sales_winrate',
@@ -133,6 +173,14 @@ export const QUESTIONS: Question[] = [
     why: 'Every quote takes time to prepare. Knowing which ones win helps you focus on the right {customers} and sharpen your offer.',
     fix: 'Log every quote this month — value, date, won or lost, and the reason. Patterns show up within weeks.',
     effort: 'quick',
+    steps: [
+      "Note the reason every lost quote was lost: price, timing, competitor or no reply.",
+      "Fix the top reason first — for example faster quotes, a clearer offer or a follow-up call.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP quotations track every quote from sent to won or lost — with the reason — so your win rate is always visible. AI spots which kinds of {customers} and quotes win most often, so your team spends time where it pays.",
+    },
   },
   {
     id: 'sales_repeat',
@@ -152,6 +200,14 @@ export const QUESTIONS: Question[] = [
     why: 'Keeping an existing {customer} usually costs far less than finding a new one — repeat business is the cheapest growth there is.',
     fix: 'Personally contact your last 10 {customers} with a thank-you and a good reason to come back.',
     effort: 'quick',
+    steps: [
+      "Note when {customers} usually need you again and set a reminder or offer for that moment.",
+      "Thank and check in with every {customer} 2–4 weeks after they buy.",
+    ],
+    solution: {
+      services: ['marketing', 'erp'],
+      text: "WhatsApp and email campaigns bring past {customers} back with well-timed reminders and offers. Because your ERP knows who bought what and when, the right message goes to the right {customer} automatically.",
+    },
   },
   {
     id: 'sales_owner',
@@ -170,6 +226,14 @@ export const QUESTIONS: Question[] = [
     why: 'If every sale needs you, growth stops at the number of hours in your day.',
     fix: 'Write down how you sell — your best questions, your pitch, answers to common objections — and train one person on it.',
     effort: 'big',
+    steps: [
+      "Write down your sales process step by step — from first enquiry to payment.",
+      "Let one team member handle new enquiries with you reviewing, then gradually hand over.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "An ERP CRM gives your team one sales process — templates, price lists, discounts and approvals — so others can sell the way you do. An AI assistant answers common enquiries 24/7 and qualifies leads before they reach a person.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -192,6 +256,14 @@ export const QUESTIONS: Question[] = [
     why: "If you can't say why you're different, {customers} will compare you on price alone.",
     fix: "Finish this sentence and put it on your website and profiles: 'We help ___ get ___ without ___.'",
     effort: 'quick',
+    steps: [
+      "Ask 5 happy {customers} why they chose you, and use their exact words.",
+      "Put that one sentence at the top of your website, Google profile and social media bios.",
+    ],
+    solution: {
+      services: ['marketing'],
+      text: "Our digital marketing team turns what makes you different into one clear message — on your website, Google profile and social media — so {customers} compare you on value, not just on price.",
+    },
   },
   {
     id: 'mkt_findable',
@@ -210,6 +282,14 @@ export const QUESTIONS: Question[] = [
     why: 'Most people look you up before they call or visit. If they find little, they choose someone else — often without you ever knowing.',
     fix: 'Claim and complete your free Google Business Profile with photos, opening hours and contact details.',
     effort: 'quick',
+    steps: [
+      "Add photos, services, opening hours and your WhatsApp number to the Google profile.",
+      "Make sure your name, address and phone number are exactly the same everywhere online.",
+    ],
+    solution: {
+      services: ['marketing'],
+      text: "Digital marketing makes you easy to find and easy to trust: a professional website, an optimised Google Business Profile and Maps listing, and active social pages — so people searching nearby find you before your competitors.",
+    },
   },
   {
     id: 'mkt_website',
@@ -227,6 +307,14 @@ export const QUESTIONS: Question[] = [
     why: 'A website should work like a salesperson who never sleeps — explaining what you do and making it easy to get in touch.',
     fix: 'Make sure you have at least a clear one-page site: what you do, proof (reviews, photos), and a big Call / WhatsApp button that works on a phone.',
     effort: 'medium',
+    steps: [
+      "List the 3 questions {customers} ask most and answer them clearly on the website.",
+      "Track how many enquiries the website brings each month.",
+    ],
+    solution: {
+      services: ['marketing', 'ai'],
+      text: "We build fast, mobile-friendly, SEO-ready websites designed to bring enquiries — with WhatsApp and call buttons on every page. An AI chat assistant answers visitors' questions and captures their details, even at night.",
+    },
   },
   {
     id: 'mkt_booking',
@@ -245,6 +333,14 @@ export const QUESTIONS: Question[] = [
     why: "Many {customers} decide late at night or on the go. If they can't book or order in a few taps, they go where they can.",
     fix: 'Add a simple online booking or ordering link (or a WhatsApp catalogue) to your Google profile and social bios.',
     effort: 'medium',
+    steps: [
+      "Choose one booking or ordering tool and link it from your website, Google profile and WhatsApp.",
+      "Send automatic confirmations and reminders for every booking or order.",
+    ],
+    solution: {
+      services: ['marketing', 'erp'],
+      text: "Online booking or ordering on your website, Google profile and WhatsApp lets {customers} buy at any hour. Connected to your ERP, every booking or order flows straight into stock, billing and your calendar — no re-typing.",
+    },
   },
   {
     id: 'mkt_plan',
@@ -262,6 +358,14 @@ export const QUESTIONS: Question[] = [
     why: 'Stop-start marketing creates stop-start sales. Steady, planned effort builds a pipeline that keeps flowing.',
     fix: 'Pick 2 channels that suit your {customers} and commit to a simple monthly calendar for the next 90 days.',
     effort: 'medium',
+    steps: [
+      "Set a small monthly marketing budget and a simple calendar: what goes out each week, on which channel.",
+      "Review results every month and move budget to what works.",
+    ],
+    solution: {
+      services: ['marketing', 'ai'],
+      text: "A planned digital marketing programme — content calendar, social media, Google and WhatsApp campaigns — keeps enquiries steady instead of stop-start. AI tools create posts and ads faster, so the calendar never runs dry.",
+    },
   },
   {
     id: 'mkt_measure',
@@ -280,6 +384,14 @@ export const QUESTIONS: Question[] = [
     why: "Without knowing what works, you may be paying for activity that brings nothing — while under-investing in what does.",
     fix: "Ask every new {customer} 'How did you hear about us?' and record the answer in one place.",
     effort: 'quick',
+    steps: [
+      "Record the source of every new lead, every time.",
+      "Each month, compare the cost per new {customer} for every channel.",
+    ],
+    solution: {
+      services: ['marketing', 'erp'],
+      text: "Our digital marketing reports show cost and results for each channel. Linked to your ERP's CRM, every lead and sale carries its source — so you know exactly which marketing pays for itself.",
+    },
   },
   {
     id: 'mkt_reviews',
@@ -297,6 +409,14 @@ export const QUESTIONS: Question[] = [
     why: 'People trust other {customers} more than any advert. Recent reviews are often the deciding factor.',
     fix: 'Send your 10 happiest {customers} a direct link to leave a Google review this week.',
     effort: 'quick',
+    steps: [
+      "Create a short Google review link and add it to invoices, receipts and WhatsApp messages.",
+      "Reply to every review — good or bad — within 2 days.",
+    ],
+    solution: {
+      services: ['marketing', 'ai'],
+      text: "Automated WhatsApp and email review requests after each sale build a steady stream of fresh Google reviews. AI drafts polite, personal replies to every review, so you look responsive without spending hours.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -319,6 +439,14 @@ export const QUESTIONS: Question[] = [
     why: 'The first business to reply often wins the sale. Every hour of delay makes a new enquiry go cold.',
     fix: "Set an auto-reply on WhatsApp and email that says when you'll respond, and make one person responsible for checking messages twice a day.",
     effort: 'quick',
+    steps: [
+      "Save quick replies for your 10 most common questions on WhatsApp and email.",
+      "Agree a rule: every enquiry gets a reply within 1 hour during working time.",
+    ],
+    solution: {
+      services: ['ai', 'marketing'],
+      text: "An AI assistant on WhatsApp and your website replies instantly, 24/7 — answering common questions, sharing prices and booking calls — so no enquiry goes cold. WhatsApp Business tools route everything else to the right person.",
+    },
   },
   {
     id: 'cx_feedback',
@@ -337,6 +465,14 @@ export const QUESTIONS: Question[] = [
     why: "Unhappy {customers} rarely complain — they just leave and tell others. Asking early lets you fix problems before they cost you.",
     fix: "After each sale or visit, ask one question: 'How likely are you to recommend us, 0–10?' — and call anyone who answers below 7.",
     effort: 'quick',
+    steps: [
+      "Send a one-question survey after every sale or visit.",
+      "Call everyone who scores below 7 within 48 hours, and fix what they tell you.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "Your ERP sends a feedback request automatically after every sale and saves the answer against the {customer}. AI reads all the comments and highlights the complaints that keep coming back, so you fix the cause.",
+    },
   },
   {
     id: 'cx_complaints',
@@ -354,6 +490,14 @@ export const QUESTIONS: Question[] = [
     why: 'A complaint solved well can create a loyal fan. One handled badly often becomes a public bad review.',
     fix: 'Set one rule: every complaint gets a reply within 24 hours and one named person responsible for closing it.',
     effort: 'quick',
+    steps: [
+      "Log every complaint in one place, with an owner and a deadline.",
+      "Once a month, look for the complaints that repeat and fix their cause.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "An ERP support tracker gives every complaint an owner, a deadline and a status — nothing gets lost between people, and you can see patterns before they become bad reviews.",
+    },
   },
   {
     id: 'cx_consistency',
@@ -372,6 +516,14 @@ export const QUESTIONS: Question[] = [
     why: '{Customers} remember the worst experience, not the average. Consistency is what turns first-timers into regulars.',
     fix: 'Write a one-page checklist for your 5 most important {customer} moments — first contact, delivery, payment, follow-up, complaint.',
     effort: 'medium',
+    steps: [
+      "Train everyone on the checklist and agree what \"good\" looks like.",
+      "Spot-check a few {customers} every month against it.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP workflows build your standards into daily work — checklists, approvals and templates — so every {customer} gets the same quality, whoever serves them.",
+    },
   },
   {
     id: 'cx_aftersale',
@@ -389,6 +541,14 @@ export const QUESTIONS: Question[] = [
     why: 'The easiest next sale is to someone who already trusts you. Staying in touch turns one-time buyers into regulars and referrers.',
     fix: 'Keep every {customer} on one simple list and send something genuinely useful — a tip, an update, an offer — once a month.',
     effort: 'quick',
+    steps: [
+      "Group {customers} by what they bought.",
+      "Plan one useful message a month for each group: a tip, a reminder or an offer.",
+    ],
+    solution: {
+      services: ['marketing', 'erp'],
+      text: "Using the {customer} data in your ERP, automated WhatsApp and email campaigns keep you in touch after every sale — reminders, offers and useful tips that bring {customers} back and get them talking about you.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -412,6 +572,14 @@ export const QUESTIONS: Question[] = [
     why: 'When everything runs through you, you become the bottleneck — growth slows, and a sick day becomes a business problem.',
     fix: 'Pick the task you do most often and write down its steps. Hand it to someone next week and coach them through it.',
     effort: 'big',
+    steps: [
+      "Write simple step-by-step guides for your 5 most important processes.",
+      "Give each process an owner, then step back for one day a week.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "An ERP puts your processes into the system: orders, approvals, stock, billing and reports follow the same steps every time — so the business keeps running without you chasing every detail.",
+    },
   },
   {
     id: 'ops_admin',
@@ -431,6 +599,14 @@ export const QUESTIONS: Question[] = [
     why: 'Every hour spent on repeated admin is an hour not spent earning or growing.',
     fix: 'List your admin tasks for one week, then automate or outsource the biggest one first (invoice reminders are a good start).',
     effort: 'medium',
+    steps: [
+      "Use templates for invoices, quotes and payment reminders.",
+      "Batch all admin into one fixed time slot each week.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP automates invoicing, payment reminders and scheduling. AI drafts emails, quotes and replies for you — giving you back hours every week for paying work.",
+    },
   },
   {
     id: 'ops_mistakes',
@@ -448,6 +624,14 @@ export const QUESTIONS: Question[] = [
     why: "Every mistake costs twice — once to do it wrong and again to fix it — and often costs a {customer}'s trust too.",
     fix: 'For two weeks, note every mistake or delay in one list. The top 2 repeat issues show you which process to fix first.',
     effort: 'medium',
+    steps: [
+      "Add one simple check or approval at the step where most mistakes happen.",
+      "Review the mistake list monthly to see if the fix worked.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "An ERP removes most manual errors: prices, stock and {customer} details come from one source, with built-in checks and approvals exactly where mistakes used to happen.",
+    },
   },
   {
     id: 'ops_tasks',
@@ -466,6 +650,14 @@ export const QUESTIONS: Question[] = [
     why: 'When tasks live in chats, things get missed, work gets duplicated, and you spend your day chasing updates.',
     fix: 'Try a free task board (Trello, a shared Google Sheet, or similar) with one team for 30 days.',
     effort: 'quick',
+    steps: [
+      "Put every task on one shared board with an owner and a due date.",
+      "Hold a 15-minute weekly check of what's overdue.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP projects and tasks give every job an owner, a deadline and a status, with automatic reminders — no more chasing updates over WhatsApp.",
+    },
   },
   {
     id: 'ops_stock',
@@ -484,6 +676,14 @@ export const QUESTIONS: Question[] = [
     why: 'Poor stock tracking ties up cash in items that don\'t sell, and loses sales when popular items run out.',
     fix: 'Start with your top 20 items: record stock levels weekly and set a re-order point for each.',
     effort: 'medium',
+    steps: [
+      "Set a re-order level for each of your fast-moving items.",
+      "Count the fast movers weekly and the rest monthly.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP inventory updates stock with every sale and purchase — across all locations — and alerts you before items run out. AI demand forecasting predicts what you'll need, so you stop over-buying slow items and running out of popular ones.",
+    },
   },
   {
     id: 'ops_quality',
@@ -502,6 +702,14 @@ export const QUESTIONS: Question[] = [
     why: 'A defect caught inside costs a little; one found by a {customer} costs the order, the relationship and your reputation.',
     fix: 'Write a 5-point final-check list and record every batch or order against it.',
     effort: 'medium',
+    steps: [
+      "Define pass/fail checks for each stage of the work.",
+      "Record every reject with its reason, and fix the most common cause first.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP quality inspections attach checks to each stage and batch, record the results and stop faulty items from going out to {customers}.",
+    },
   },
   {
     id: 'ops_projects',
@@ -520,6 +728,14 @@ export const QUESTIONS: Question[] = [
     why: 'Delays and overruns eat straight into profit — and in project work, reputation is what wins the next job.',
     fix: 'For each running project, compare planned vs actual cost and timeline every week, even in a simple sheet.',
     effort: 'medium',
+    steps: [
+      "Give every project a budget and clear milestones before it starts.",
+      "Compare planned and actual cost and time every week, and act early.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP project management tracks every project's tasks, timesheets, materials and costs against budget in real time. AI alerts flag projects heading over time or budget while there's still time to fix them.",
+    },
   },
   {
     id: 'ops_records',
@@ -538,6 +754,14 @@ export const QUESTIONS: Question[] = [
     why: 'Missed appointments and lost records cost money, waste {customer} time and damage trust.',
     fix: 'Move bookings to an online calendar with automatic SMS/WhatsApp reminders — it alone cuts no-shows noticeably.',
     effort: 'medium',
+    steps: [
+      "Keep all {customer} records digital and backed up.",
+      "Send automatic reminders the day before every appointment.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "An ERP with appointments and {customer} records keeps bookings, histories and billing in one place, with automatic reminders that cut no-shows. An AI assistant can take booking requests on WhatsApp.",
+    },
   },
   {
     id: 'ops_admissions',
@@ -556,6 +780,14 @@ export const QUESTIONS: Question[] = [
     why: 'Scattered records mean missed fees, unanswered parent questions and hours of admin every month.',
     fix: 'Bring student details, attendance and fee status into one shared sheet or school app, updated weekly.',
     effort: 'medium',
+    steps: [
+      "Keep enrolment, attendance and fee status in one list for every {customer}.",
+      "Send fee reminders automatically before each due date.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "An ERP education module manages admissions, attendance and fees together — with automatic fee reminders, online payment links and parent updates. An AI assistant answers parents' questions on WhatsApp.",
+    },
   },
   {
     id: 'ops_bookings',
@@ -574,6 +806,14 @@ export const QUESTIONS: Question[] = [
     why: 'Manual updates cause double-bookings and empty nights — both cost money and reviews.',
     fix: 'Look at a simple channel manager or property system that syncs your booking sites automatically.',
     effort: 'medium',
+    steps: [
+      "Connect all booking channels to one calendar.",
+      "Set rates and availability once and let them update everywhere.",
+    ],
+    solution: {
+      services: ['erp', 'marketing'],
+      text: "A channel-synced booking system connected to your ERP prevents double-bookings and keeps rates consistent. Digital marketing grows direct bookings on your own website — with no commission to pay.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -596,6 +836,14 @@ export const QUESTIONS: Question[] = [
     why: "Busy isn't the same as profitable. Many businesses grow sales while quietly losing money on some of them.",
     fix: 'Ask your accountant for (or build) a one-page monthly report: sales, costs, profit. Review it in the first week of every month.',
     effort: 'medium',
+    steps: [
+      "Look at your 3 biggest costs every month and find one way to reduce each.",
+      "Check which {offering} make money and which don't.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP accounting produces your profit & loss automatically every month — by {offering}, branch or project. AI insights explain what changed and flag costs that are rising faster than sales.",
+    },
   },
   {
     id: 'fin_cash',
@@ -614,6 +862,14 @@ export const QUESTIONS: Question[] = [
     why: 'Cash is the oxygen of a business. Even profitable businesses fail when cash runs out at the wrong moment.',
     fix: 'Make a 13-week cash forecast — money expected in and going out each week. It shows trouble before it arrives.',
     effort: 'medium',
+    steps: [
+      "Chase overdue payments every week, starting with the largest.",
+      "Ask your main suppliers for longer payment terms.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP shows cash coming in and going out, money owed to you and bills due — live. AI cash-flow forecasting warns you weeks before a shortfall, so you can act before it hurts.",
+    },
   },
   {
     id: 'fin_books',
@@ -631,6 +887,14 @@ export const QUESTIONS: Question[] = [
     why: 'Out-of-date books mean decisions are made on guesswork — and tax time becomes stressful and expensive.',
     fix: 'Fix one day each month to update the accounts — or ask your accountant for monthly instead of yearly figures.',
     effort: 'medium',
+    steps: [
+      "Enter bills and receipts every week instead of at year end.",
+      "Match your bank statement with your books every month.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP accounting records every sale, purchase and payment as it happens and matches it with the bank — your books are always up to date and ready for GST / VAT filing.",
+    },
   },
   {
     id: 'fin_separate',
@@ -649,6 +913,14 @@ export const QUESTIONS: Question[] = [
     why: 'Mixed money hides your real profit, causes tax headaches, and makes the business harder to grow, fund or sell.',
     fix: 'Open a separate business account and pay yourself a fixed monthly amount from it.',
     effort: 'quick',
+    steps: [
+      "Move all business payments and income to the business account.",
+      "Keep receipts for anything paid personally on the business's behalf.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "With ERP accounting, every business transaction goes through the business books, so your real profit is always visible — and tax time is simple.",
+    },
   },
   {
     id: 'fin_collect',
@@ -667,6 +939,14 @@ export const QUESTIONS: Question[] = [
     why: "Money owed to you is cash you've earned but can't use. Late payers are borrowing from you for free.",
     fix: 'Invoice the same day the work is done, show a clear due date, and set automatic reminders 3 days before and 1 day after.',
     effort: 'quick',
+    steps: [
+      "Offer easy ways to pay: UPI, payment links or card.",
+      "Call {customers} whose payment is more than 7 days late.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP sends invoices the moment work is done, with payment links and automatic reminders on WhatsApp and email — and shows exactly who owes what. AI flags {customers} who are likely to pay late, so you act before it becomes a problem.",
+    },
   },
   {
     id: 'fin_pricing',
@@ -685,6 +965,14 @@ export const QUESTIONS: Question[] = [
     why: 'Pricing is the fastest lever on profit. Even a small, well-explained price rise often goes straight to the bottom line.',
     fix: 'Work out the full cost of your top 3 {offering} — including your time and overheads — and compare it with the price.',
     effort: 'medium',
+    steps: [
+      "Test a small price increase on new {customers} first.",
+      "Review prices every year, or whenever costs rise.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP costing shows the true cost and margin of every {offering}. AI analysis highlights low-margin {offering} and {customers}, so you can set prices with confidence.",
+    },
   },
   {
     id: 'fin_budget',
@@ -703,6 +991,14 @@ export const QUESTIONS: Question[] = [
     why: "Without a budget, costs creep up unnoticed and it's hard to know what you can afford to invest in.",
     fix: 'Set a simple month-by-month budget for your 10 biggest cost lines, and compare it with actuals every month.',
     effort: 'medium',
+    steps: [
+      "Review the budget against actual figures at the start of every month.",
+      "Agree who can approve spending above a set amount.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP budgeting compares budget with actual spending automatically, alerts you when a cost line goes over, and routes big purchases for approval.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -726,6 +1022,14 @@ export const QUESTIONS: Question[] = [
     why: "Doing everything yourself caps your income at your own hours — and puts the whole business at risk if you're unwell.",
     fix: "List the tasks that don't need your particular skills, and get a quote from one freelancer or service to take the first one off your plate.",
     effort: 'medium',
+    steps: [
+      "Split your tasks into \"only I can do this\" and \"anyone could do this\".",
+      "Hand over one recurring task this month.",
+    ],
+    solution: {
+      services: ['ai', 'erp'],
+      text: "AI assistants take over routine work — replies, drafts, reports — and ERP automates the admin, so you can grow before you need to hire.",
+    },
   },
   {
     id: 'team_roles',
@@ -745,6 +1049,14 @@ export const QUESTIONS: Question[] = [
     why: 'When everyone is responsible, no one is. Clear ownership means things get done without you chasing.',
     fix: "Write one line for each person — 'You own ___, and success looks like ___' — and share it with the team.",
     effort: 'quick',
+    steps: [
+      "Review the list together once a month and update it as the business changes.",
+      "Make sure every recurring task has exactly one owner.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP gives every role clear responsibilities, permissions and approvals inside the system — everyone sees what they own, and work doesn't fall between people.",
+    },
   },
   {
     id: 'team_keep',
@@ -763,6 +1075,14 @@ export const QUESTIONS: Question[] = [
     why: 'Every person who leaves takes knowledge with them, and replacing them costs weeks of time and money.',
     fix: "Have a short one-to-one with each team member this month: what's going well, what's frustrating, what would make them stay.",
     effort: 'medium',
+    steps: [
+      "Fix the top frustration your team mentions, and tell them you did.",
+      "Make pay, leave and attendance rules clear and the same for everyone.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP HR & payroll makes salaries, leave and attendance accurate, fair and transparent — one less reason for good people to leave.",
+    },
   },
   {
     id: 'team_training',
@@ -781,6 +1101,14 @@ export const QUESTIONS: Question[] = [
     why: 'Without proper training, new people make avoidable mistakes and take months longer to become productive.',
     fix: 'Record short phone videos of how key tasks are done — they quickly become a free training library.',
     effort: 'medium',
+    steps: [
+      "Make a checklist for a new joiner's first 30 days.",
+      "Pair every new joiner with a buddy for their first two weeks.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP keeps your processes and guides inside the system people use every day, and an AI assistant trained on your own documents answers new joiners' questions instantly.",
+    },
   },
   {
     id: 'team_feedback',
@@ -799,6 +1127,14 @@ export const QUESTIONS: Question[] = [
     why: "People can't improve what they don't know about — and good people leave when they feel unnoticed.",
     fix: 'Start a 20-minute monthly check-in with each person: wins, blockers, and one goal for next month.',
     effort: 'quick',
+    steps: [
+      "Agree one clear goal per person each month.",
+      "Write down what was agreed, so the next check-in starts from it.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP HR keeps goals, appraisals and attendance in one place, so reviews are quick, fair and based on facts.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -826,6 +1162,14 @@ export const QUESTIONS: Question[] = [
     why: 'The right basic tools save hours every week and cut mistakes — and many cost little or nothing.',
     fix: 'Start with the tool that removes your biggest daily headache — usually billing/accounting or a {customer} list.',
     effort: 'medium',
+    steps: [
+      "Make a plan to bring accounting, sales and stock into one system over the next few months.",
+      "Train everyone on the new tool, so it's actually used.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "One ERP replaces scattered tools — accounting, sales & CRM, inventory, HR and projects in a single system your whole team uses, set up for how you work.",
+    },
   },
   {
     id: 'tech_retype',
@@ -844,6 +1188,14 @@ export const QUESTIONS: Question[] = [
     why: 'Re-typing wastes hours and causes errors — wrong prices, wrong stock, wrong invoices.',
     fix: 'Find the one piece of data you type most often in two places, and look for a way to connect or automate it.',
     effort: 'big',
+    steps: [
+      "List every place where the same information is typed twice.",
+      "Connect or replace the worst one first.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP keeps one version of every {customer}, product and price, so information is entered once and flows everywhere. AI automation reads invoices and documents, so nobody has to type them in.",
+    },
   },
   {
     id: 'tech_manual',
@@ -862,6 +1214,14 @@ export const QUESTIONS: Question[] = [
     why: 'Hours spent on copy-paste are hours not spent on {customers} and growth — and the problem gets bigger as you grow.',
     fix: 'List your 3 most repetitive tasks and ask of each: could a template, a tool or a simple automation do this?',
     effort: 'medium',
+    steps: [
+      "Automate or template one of those tasks every month.",
+      "Measure the hours saved and reuse them on {customers} and growth.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP automates routine work — invoices, reminders, stock updates, reports — and AI reads documents, drafts replies and summarises data, saving hours every day.",
+    },
   },
   {
     id: 'tech_dashboard',
@@ -880,6 +1240,14 @@ export const QUESTIONS: Question[] = [
     why: 'Decisions made on old or missing numbers are guesses. A simple dashboard shows problems while they are still small.',
     fix: 'Choose the 5 numbers that matter most (sales, cash, enquiries, orders, overdue payments) and track them weekly on one page.',
     effort: 'medium',
+    steps: [
+      "Review those numbers every Monday, in the same place.",
+      "Set a warning level for each number, so problems stand out.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP dashboards show sales, cash, stock and overdue payments live on one screen. AI insights explain what changed and send alerts when something needs your attention.",
+    },
   },
   {
     id: 'tech_backup',
@@ -897,6 +1265,14 @@ export const QUESTIONS: Question[] = [
     why: 'Losing {customer} lists, invoices or files can stop a business for weeks. Backups are cheap insurance.',
     fix: 'Turn on automatic cloud backup (Google Drive, OneDrive or iCloud) for all business files today.',
     effort: 'quick',
+    steps: [
+      "Check once a month that you can actually restore a file.",
+      "Use strong passwords and two-step login for business accounts.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "A cloud ERP keeps all your business data secure and backed up automatically — a lost laptop or phone never means lost business.",
+    },
   },
   {
     id: 'tech_ai',
@@ -915,6 +1291,14 @@ export const QUESTIONS: Question[] = [
     why: 'AI assistants can now draft emails, posts, proposals and replies in seconds — small businesses using them win back hours each week.',
     fix: 'This week, use an AI assistant to draft your next social post, proposal or {customer} reply — then edit it in your own voice.',
     effort: 'quick',
+    steps: [
+      "Pick one repetitive daily task and try an AI tool on it for a week.",
+      "Share what works with the team and make it the normal way.",
+    ],
+    solution: {
+      services: ['ai'],
+      text: "We set up practical AI for your business: assistants that answer {customers} on WhatsApp and your website, tools that draft content and quotes, and AI insights inside your ERP that forecast and alert you.",
+    },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -937,6 +1321,14 @@ export const QUESTIONS: Question[] = [
     why: 'Without a clear target, every decision feels equally important — and the urgent always beats the important.',
     fix: 'Write 3 goals for the next 12 months, each with a number and a date, and review them on the first Monday of every month.',
     effort: 'quick',
+    steps: [
+      "Break each yearly goal into a monthly number.",
+      "Share the goals with the team, so everyone pulls in the same direction.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP dashboards track your goals against real numbers every day, and AI forecasts show early whether you're on track — no more guessing at year end.",
+    },
   },
   {
     id: 'strat_time',
@@ -955,6 +1347,14 @@ export const QUESTIONS: Question[] = [
     why: "If you're always firefighting, nobody is steering. Growth needs someone looking ahead.",
     fix: 'Block 2 hours at the same time every week purely for planning — and protect it like a meeting with your best {customer}.',
     effort: 'quick',
+    steps: [
+      "Hand one recurring decision to someone in your team.",
+      "Use your planning time on your 12-month goals and your biggest gap.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "When ERP runs daily operations and AI handles routine replies and reports, you get your time back to plan and grow the business.",
+    },
   },
   {
     id: 'strat_profitable',
@@ -972,6 +1372,14 @@ export const QUESTIONS: Question[] = [
     why: 'Usually a small share of {offering} and {customers} bring most of the profit. Knowing which lets you focus your energy.',
     fix: 'Rank your top 10 {offering} or {customers} by profit — not by sales. The result often surprises.',
     effort: 'medium',
+    steps: [
+      "Put more of your sales and marketing effort behind the most profitable {offering} and {customers}.",
+      "Decide what to do about the least profitable ones: re-price, change, or stop.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP reports show profit by {offering} and by {customer}. AI analysis surfaces your most and least profitable ones automatically, every month.",
+    },
   },
   {
     id: 'strat_market',
@@ -990,6 +1398,14 @@ export const QUESTIONS: Question[] = [
     why: "Markets shift. Businesses that notice early adapt; those that don't find out when sales drop.",
     fix: 'Spend one hour this month on your top 3 competitors — prices, offers, reviews — and note one idea worth borrowing.',
     effort: 'quick',
+    steps: [
+      "Set up Google Alerts for your competitors and your industry.",
+      "Ask every lost {customer} where they went instead.",
+    ],
+    solution: {
+      services: ['marketing', 'ai'],
+      text: "Our digital marketing team tracks competitors' online presence, offers and reviews, and AI tools summarise market trends for you — so you notice changes early.",
+    },
   },
   {
     id: 'strat_risk',
@@ -1008,6 +1424,14 @@ export const QUESTIONS: Question[] = [
     why: 'This risk stays hidden until it hits. Spreading your dependencies makes the business steadier — and more valuable.',
     fix: 'Name your single biggest dependency and start a backup plan for it this quarter.',
     effort: 'big',
+    steps: [
+      "Write down how your key person's most important work is done.",
+      "Find a second supplier for your most critical items.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "ERP puts processes and knowledge into the system instead of one person's head, and its reports show how much you depend on single {customers} or suppliers — before it becomes a risk.",
+    },
   },
   {
     id: 'strat_expand',
@@ -1026,6 +1450,14 @@ export const QUESTIONS: Question[] = [
     why: 'Expanding without repeatable systems multiplies the problems you already have. Systems first, then scale.',
     fix: 'Write down what makes your best location or team work, and turn it into a step-by-step launch checklist.',
     effort: 'big',
+    steps: [
+      "Run the checklist at your current location first and fix what's missing.",
+      "Set up central reporting so you can run both locations from one place.",
+    ],
+    solution: {
+      services: ['erp', 'marketing'],
+      text: "A multi-branch ERP lets you copy your systems to a new location in weeks, with central reporting across all of them. Digital marketing launches the new location locally with Google, social media and WhatsApp.",
+    },
   },
 ];
 

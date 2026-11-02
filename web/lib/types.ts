@@ -32,6 +32,23 @@ export type SectionId =
 
 export type Effort = 'quick' | 'medium' | 'big';
 
+/** Team Back Office's service lines (names and pitches live in lib/brand.ts). */
+export type ServiceId = 'erp' | 'marketing' | 'ai';
+
+export interface Solution {
+  services: ServiceId[];
+  /** How the service(s) fix this specific gap — plain language, may contain vocabulary tokens. */
+  text: string;
+}
+
+/** A service the client's gaps point to, with the gaps it would fix (most urgent first). */
+export interface ServiceRecommendation {
+  id: ServiceId;
+  /** Sum of the severities of the gaps it fixes — used for ordering. */
+  weight: number;
+  items: { questionId: string; title: string; sectionTitle: string; kind: 'gap' | 'watch' }[];
+}
+
 /** One answer choice. `score` is 0–100; leave it out for neutral choices that shouldn't affect the score. */
 export interface Option {
   id: string;
@@ -107,6 +124,10 @@ export interface Question {
   fix: string;
   /** How big the first step is — drives the action-plan timeline. */
   effort: Effort;
+  /** More concrete steps after `fix` (shown as "Next steps" 2, 3…). */
+  steps?: string[];
+  /** How Team Back Office's ERP / digital marketing / AI services solve this gap (only where it fits). */
+  solution?: Solution;
 }
 
 export interface Section {
@@ -139,6 +160,9 @@ export interface Insight {
   why: string;
   fix: string;
   effort: Effort;
+  /** Further next steps (already vocabulary-filled). */
+  steps: string[];
+  solution?: Solution;
   score: number;
   weight: number;
   /** Higher = more urgent. (100 − score) × weight. */
@@ -248,6 +272,8 @@ export interface Results {
   keyPoints: KeyPoint[];
   /** Overall score if every scored area reached its stage target (never below `overall`). */
   potential: number | null;
+  /** Services that would fix the client's gaps, most relevant first (empty if none apply). */
+  services: ServiceRecommendation[];
   stats: {
     asked: number;
     answered: number;

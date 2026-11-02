@@ -4,7 +4,7 @@ import { Icon } from '@/components/Icon';
 import { contactLinks, ContactButtons } from '@/components/results/ContactCta';
 import { Gauge } from '@/components/results/Gauge';
 import { bigScale, KeyPointChip, kpStyle, sectionFor } from '@/components/results/keyPointMeta';
-import { formatDate, goalLabels, profileLine } from '@/components/results/labels';
+import { formatDate, goalLabels, profileLine, serviceImpact } from '@/components/results/labels';
 import type { ReportSource } from '@/components/results/useReportData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { BRAND } from '@/lib/brand';
@@ -359,6 +359,52 @@ export function PlanSlide({ results }: { results: Results }) {
   );
 }
 
+// ── How we help ─────────────────────────────────────────────
+export function HelpSlide({ results }: { results: Results }) {
+  const services = results.services;
+  return (
+    <div className="flex min-h-full w-full flex-col justify-center">
+      <Eyebrow>How {BRAND.company} helps</Eyebrow>
+      <h2
+        className="font-display mt-3 font-medium leading-[1.05] tracking-[-0.02em] text-ink"
+        style={{ fontSize: 'clamp(30px, min(4.4cqw, 7.5cqh), 68px)' }}
+      >
+        What would close these gaps fastest
+      </h2>
+      <div className={clsx('mt-[clamp(14px,3.2cqh,36px)] grid gap-3 md:gap-4', services.length > 1 && 'md:grid-cols-2', services.length > 2 && 'lg:grid-cols-3')}>
+        {services.map((rec, i) => {
+          const svc = BRAND.services[rec.id];
+          return (
+            <section
+              key={rec.id}
+              className={clsx(
+                'rounded-[22px] border p-[clamp(16px,2cqw,28px)] shadow-card',
+                i === 0 ? 'border-brand bg-brand text-white' : 'border-line bg-card text-ink',
+              )}
+            >
+              <h3 className="font-display flex items-center gap-2.5" style={{ fontSize: 'clamp(20px, min(2.2cqw, 3.8cqh), 30px)' }}>
+                <Icon name={svc.icon} className={clsx('h-6 w-6', i === 0 ? 'text-accent-light' : 'text-brand')} />
+                {svc.long}
+              </h3>
+              <p className={clsx('mt-1', i === 0 ? 'text-white/75' : 'text-muted')} style={{ fontSize: DETAIL }}>
+                {serviceImpact(rec.items)}
+              </p>
+              <ul className="mt-3 space-y-2" style={{ fontSize: PANEL_TEXT }}>
+                {rec.items.slice(0, 3).map((it) => (
+                  <li key={it.questionId} className="flex gap-2 leading-snug">
+                    <span aria-hidden="true" className={i === 0 ? 'text-accent-light' : 'text-brand'}>•</span>
+                    {it.title}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Contact ─────────────────────────────────────────────────
 export function ContactSlide({ businessName }: { businessName: string }) {
   return (
@@ -386,5 +432,6 @@ export function SlideContent({ slide, results, source }: { slide: Slide; results
   if (slide.kind === 'point')
     return <PointSlide point={slide.point} n={slide.n} total={results.keyPoints.length} results={results} />;
   if (slide.kind === 'plan') return <PlanSlide results={results} />;
+  if (slide.kind === 'help') return <HelpSlide results={results} />;
   return <ContactSlide businessName={results.businessName} />;
 }

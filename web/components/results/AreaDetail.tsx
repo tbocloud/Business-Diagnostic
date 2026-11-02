@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { Insight, SectionResult } from '@/lib/types';
 import { BarTrack } from './AreaScores';
+import { BRAND } from '@/lib/brand';
 import { EFFORT_META, stagePhrase } from './labels';
+import { ServiceChip } from './ServiceChip';
 
 /**
  * "What to do" for one area: what the business needs there, why it matters, and the next
@@ -209,6 +211,7 @@ export function AreaDetail({
 
 function NeedCard({ n, index }: { n: Insight; index: number }) {
   const effort = EFFORT_META[n.effort];
+  const steps = [n.fix, ...n.steps];
   return (
     <li className="overflow-hidden rounded-[16px] border border-line bg-card">
       <div className="px-4 pb-3 pt-3.5">
@@ -231,19 +234,44 @@ function NeedCard({ n, index }: { n: Insight; index: number }) {
         </div>
         <p className="mt-2 pl-[34px] text-[13.5px] leading-relaxed text-ink-2">{n.why}</p>
       </div>
-      <div className="flex items-start gap-2.5 border-t border-line bg-brand-soft/40 px-4 py-3">
-        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-brand">
-            Next step
-            <span className={clsx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] normal-case tracking-normal', effort.className)}>
-              <effort.Icon className="h-3 w-3" aria-hidden="true" />
-              {effort.label}
-            </span>
-          </p>
-          <p className="mt-1 text-[14px] leading-relaxed text-ink">{n.fix}</p>
-        </div>
+
+      {/* What to do — concrete steps, first one first */}
+      <div className="border-t border-line bg-brand-soft/30 px-4 py-3">
+        <p className="flex flex-wrap items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-brand">
+          <Lightbulb className="h-4 w-4" aria-hidden="true" />
+          Next steps
+          <span className={clsx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] normal-case tracking-normal', effort.className)}>
+            <effort.Icon className="h-3 w-3" aria-hidden="true" />
+            {effort.label}
+          </span>
+        </p>
+        <ol className="mt-2 space-y-1.5">
+          {steps.map((step, i) => (
+            <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-ink">
+              <span
+                aria-hidden="true"
+                className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border border-brand/40 bg-card text-[10.5px] font-semibold text-brand"
+              >
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
       </div>
+
+      {/* How our ERP / digital marketing / AI solves it */}
+      {n.solution && (
+        <div className="bg-brand px-4 py-3.5 text-white">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-accent-light">How {BRAND.company} helps</p>
+            {n.solution.services.map((id) => (
+              <ServiceChip key={id} id={id} tone="dark" />
+            ))}
+          </div>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-white/90">{n.solution.text}</p>
+        </div>
+      )}
     </li>
   );
 }

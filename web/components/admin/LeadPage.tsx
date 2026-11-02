@@ -25,6 +25,8 @@ import { normalizeReport } from '@/lib/normalize';
 import { encodeResults } from '@/lib/share';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { ReportBody } from '@/components/results/ReportBody';
+import { serviceImpact } from '@/components/results/labels';
+import { ServiceChip } from '@/components/results/ServiceChip';
 import { useAdminUser } from './AdminShell';
 import { Card, dayFromNow, ErrorText, FieldLabel, formatDate, ScoreBadge, STATUSES, StatusPill, telHref, timeAgo, waHref } from './ui';
 
@@ -141,6 +143,20 @@ function LeadView({ data, onChange }: { data: LeadDetail; onChange: (d: LeadDeta
           </p>
         )}
       </div>
+
+      {/* What to pitch: our services ranked by how much of this client's gap they fix */}
+      {results && results.services.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-brand/20 bg-brand-soft/30 px-4 py-3">
+          <span className="mr-1 text-[13px] font-semibold text-ink">What to pitch:</span>
+          {results.services.map((s, i) => (
+            <span key={s.id} className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+              <ServiceChip id={s.id} />
+              {serviceImpact(s.items, 'short')}
+              {i < results.services.length - 1 && <span className="mx-1 text-line-strong" aria-hidden="true">·</span>}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
         {/* Side panel first on phones: the BDE's working area */}

@@ -7,6 +7,7 @@ import { ActionPlan } from './ActionPlan';
 import { AreaDetail } from './AreaDetail';
 import { AreaNotes } from './AreaNotes';
 import { AreaScores } from './AreaScores';
+import { HowWeHelp } from './HowWeHelp';
 import { Insights } from './Insights';
 import { KeyPoints } from './KeyPoints';
 import { RealGap } from './RealGap';
@@ -68,7 +69,7 @@ export function ReportBody({
         </button>
         {!expanded && (
           <p className="mt-2.5 max-w-md text-[13.5px] leading-relaxed text-muted">
-            Key points, the real gap behind your biggest headache, strengths and gaps, and your 7 / 30 / 90-day plan.
+            Key points, the real gap behind your biggest headache, strengths and gaps, your 7 / 30 / 90-day plan — and how we can help.
           </p>
         )}
       </div>
@@ -84,6 +85,7 @@ export function ReportBody({
         {results.realGap && <RealGap gap={results.realGap} />}
         <Insights strengths={results.strengths} gaps={results.gaps} stats={results.stats} />
         <ActionPlan plan={results.actionPlan} businessName={results.businessName} />
+        <HowWeHelp services={results.services} businessName={results.businessName} onGetHelp={onGetHelp} />
         <AreaNotes sections={results.sections} openFirst={results.realGap?.actual.id} />
       </div>
 

@@ -101,6 +101,7 @@ The setup code matters because the repository is public: without it, anyone who 
 | Status, follow-up date, contact details, notes | ✓ | ✓ (on leads they can see) |
 | Team: add members, roles, deactivate, reset passwords | ✓ | — |
 
+- **What to pitch:** each lead page lists our services ranked by how many of that client's gaps they fix. Review mode ends with a "How we help" slide.
 - **Pipeline:** New → Contacted → Meeting booked → Proposal sent → Won / Lost.
 - **History:** every change is logged automatically in the lead's history (who and when), next to the notes.
 - **Review mode:** "Start review" opens the client's report as full-screen slides. Press **N** for presenter notes ("Say…" / "Ask them…"). "Open presenter view" puts the notes and next slide in a second window, so the owner only sees the slides.
@@ -117,7 +118,9 @@ The source lives in `web/`. Typical edits:
 | What | Where |
 |---|---|
 | Brand name, tagline, contact buttons (email / WhatsApp / booking link) | `web/lib/brand.ts` |
-| Questions, options, scores, advice text | `web/lib/questions.ts` |
+| Our services (ERP / Digital Marketing / AI): names, icons, one-line pitch | `web/lib/brand.ts` → `services` |
+| Questions, options, scores, advice text, next steps (`fix` + `steps`) | `web/lib/questions.ts` |
+| How our services solve each gap (`solution: { services, text }`) | `web/lib/questions.ts` |
 | Sections and BDE discovery questions | `web/lib/sections.ts` |
 | Industries, stages, headaches, goals, stage targets | `web/lib/profile.ts` |
 | Scoring rules, real-gap logic, key points | `web/lib/engine.ts` |
