@@ -29,7 +29,10 @@ function ScoreVsTarget({ score, target }: { score: number; target: number }) {
 
 export function RealGap({ gap }: { gap: RealGapData }) {
   const { actual, perceived, topIssue, hiddenStrength } = gap;
-  const twoSided = !!perceived;
+  // Side-by-side only when there is a real comparison: the client picked one of the listed
+  // headaches, which maps to areas. A typed-in headache can't be compared, so it isn't shown
+  // as a big quote (the story below still mentions it in their words).
+  const twoSided = !!perceived && perceived.sections.length > 0;
 
   return (
     <section
@@ -60,14 +63,14 @@ export function RealGap({ gap }: { gap: RealGapData }) {
 
         <div
           className={clsx(
-            'mt-8 grid items-stretch gap-3',
+            'mt-8 grid items-center gap-3',
             twoSided && 'lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.25fr)] lg:gap-5 print:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.25fr)]',
           )}
         >
-          {perceived && (
+          {twoSided && perceived && (
             <>
-              <div className="flex flex-col justify-between rounded-[22px] border border-white/15 bg-white/[0.06] p-5 sm:p-7">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/75">What you told us</p>
+              <div className="flex flex-col rounded-[22px] border border-white/15 bg-white/[0.06] p-5 sm:p-7">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/75">Your biggest headache — you told us</p>
                 <blockquote className="font-display font-display-italic mt-4 text-[24px] leading-[1.25] text-white sm:text-[30px]">
                   <span aria-hidden="true" className="mr-1 text-accent-light">
                     “

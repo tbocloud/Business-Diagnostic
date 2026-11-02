@@ -1,11 +1,12 @@
 'use client';
 
 import clsx from 'clsx';
-import { BarChart3, Table2 } from 'lucide-react';
+import { BarChart3, ChevronRight, Table2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import type { SectionResult } from '@/lib/types';
+import type { SectionId, SectionResult } from '@/lib/types';
+import { stagePhrase } from './labels';
 import { SectionHeader } from './SectionHeader';
 
 const TICKS = [0, 25, 50, 75, 100];
@@ -127,7 +128,20 @@ export function BarTrack({
   );
 }
 
-export function AreaScores({ sections, target, levelLabel }: { sections: SectionResult[]; target: number; levelLabel: string }) {
+export function AreaScores({
+  sections,
+  target,
+  levelLabel,
+  onOpenArea,
+}: {
+  sections: SectionResult[];
+  target: number;
+  levelLabel: string;
+  /** Adds a "What to do" button to each area, opening its next steps. */
+  onOpenArea?: (id: SectionId) => void;
+}) {
+  // Desktop columns: name · bar · status (· "What to do" button)
+  const cols = onOpenArea ? 'md:grid-cols-[14.5rem_minmax(0,1fr)_8.5rem_7.5rem]' : 'md:grid-cols-[14.5rem_minmax(0,1fr)_9rem]';
   const [table, setTable] = useState(false);
   const tableId = useId();
   // One tooltip at a time: the hovered row wins, otherwise the keyboard-focused row.
@@ -141,7 +155,7 @@ export function AreaScores({ sections, target, levelLabel }: { sections: Section
         id="area-scores-title"
         eyebrow="Area scores"
         title="How each area is doing"
-        lead={`Your score out of 100 in each area, against the guide target for a ${levelLabel.toLowerCase()} business (${target}).`}
+        lead={`Your score out of 100 in each area, against the guide target for ${stagePhrase(levelLabel)} (${target}).${onOpenArea ? ' Tap “What to do” on any area for your next steps.' : ''}`}
       />
       <div className="rounded-[24px] border border-line bg-card p-4 shadow-card print-plain sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -214,7 +228,8 @@ export function AreaScores({ sections, target, levelLabel }: { sections: Section
                     onBlur={() => setFocusId(null)}
                     aria-label={`${s.title}: ${s.score === null ? 'not assessed' : `${s.score} out of 100, target ${s.target}, ${gapText(s).toLowerCase()}`}. Status: ${s.statusLabel}. ${s.answered} of ${s.asked} questions answered.`}
                     className={clsx(
-                      'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-xl px-1 py-2.5 outline-offset-0 hover:bg-paper/60 md:grid-cols-[14.5rem_minmax(0,1fr)_9rem] md:gap-x-5',
+                      'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-xl px-1 py-2.5 outline-offset-0 hover:bg-paper/60 md:gap-x-5',
+                      cols,
                       s.score === null && 'opacity-75',
                     )}
                   >
@@ -228,6 +243,19 @@ export function AreaScores({ sections, target, levelLabel }: { sections: Section
                     <span className="col-start-2 row-start-1 justify-self-end md:col-start-auto md:row-start-auto">
                       <StatusBadge status={s.status} size="sm" />
                     </span>
+                    {onOpenArea && (
+                      <span className="no-print col-span-2 row-start-3 justify-self-end md:col-span-1 md:row-start-auto">
+                        <button
+                          type="button"
+                          onClick={() => onOpenArea(s.id)}
+                          aria-label={`What to do next: ${s.title}`}
+                          className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-brand/30 bg-card px-3 text-[13px] font-semibold text-brand transition-colors hover:border-brand hover:bg-brand-soft/50"
+                        >
+                          What to do
+                          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}
@@ -235,10 +263,10 @@ export function AreaScores({ sections, target, levelLabel }: { sections: Section
             {/* x-axis */}
             <div
               aria-hidden="true"
-              className="mt-1 grid grid-cols-1 gap-x-5 px-1 md:grid-cols-[14.5rem_minmax(0,1fr)_9rem]"
+              className={clsx('mt-1 grid grid-cols-1 gap-x-5 px-1', cols)}
             >
               <span className="hidden md:block" />
-              <div className="relative h-5">
+              <div className="relative h-5 md:col-start-2">
                 <div className="absolute inset-y-0 left-0 right-9">
                   {TICKS.map((t) => (
                     <span

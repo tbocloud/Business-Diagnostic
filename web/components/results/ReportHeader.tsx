@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { BRAND } from '@/lib/brand';
 import type { Profile, Results } from '@/lib/types';
-import { formatDate, goalLabels } from './labels';
+import { formatDate, goalLabels, NOT_SPECIFIED } from './labels';
 
 interface ReportHeaderProps {
   results: Results;
@@ -81,9 +81,10 @@ export function ReportHeader({
       )}
 
       <ul className="mt-5 flex flex-wrap gap-2" aria-label="About this business">
-        <Chip label="Industry" value={results.industryLabel} />
-        <Chip label="Stage" value={results.levelLabel} />
-        <Chip label="Team" value={results.teamLabel} />
+        {/* Skipped details are left out rather than shown as "Not specified". */}
+        {results.industryLabel !== NOT_SPECIFIED && <Chip label="Industry" value={results.industryLabel} />}
+        {results.levelLabel !== NOT_SPECIFIED && <Chip label="Stage" value={results.levelLabel} />}
+        {results.teamLabel !== NOT_SPECIFIED && <Chip label="Team" value={results.teamLabel} />}
         {goals.length > 0 && <Chip label={goals.length === 1 ? 'Goal' : 'Goals'} value={goals.join(' · ')} />}
       </ul>
 

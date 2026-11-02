@@ -1,5 +1,6 @@
 import type { Results } from '@/lib/types';
 import { Gauge } from './Gauge';
+import { stagePhrase } from './labels';
 
 export function ScoreHero({ results }: { results: Results }) {
   const { overall, band, summary, target, levelLabel } = results;
@@ -12,7 +13,7 @@ export function ScoreHero({ results }: { results: Results }) {
         <p className="eyebrow text-center">Overall health</p>
         <Gauge value={overall} target={target} className="mt-3 max-w-[290px]" />
         <p className="mt-1 text-center text-[12.5px] text-muted">
-          Target {target} is the guide level for a {levelLabel.toLowerCase()} business.
+          Target {target} is the guide level for {stagePhrase(levelLabel)}.
         </p>
       </div>
       <div className="flex flex-col justify-center px-6 py-8 sm:px-10 md:py-10 print:py-6">

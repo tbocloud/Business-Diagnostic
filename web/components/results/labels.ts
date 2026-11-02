@@ -29,3 +29,18 @@ export function slug(s: string): string {
       .slice(0, 48) || 'business'
   );
 }
+
+/** What profile labels say when the client skipped that question. */
+export const NOT_SPECIFIED = 'Not specified';
+
+/** "a growing business" · "an established business" · "a business like yours" (stage skipped). */
+export function stagePhrase(levelLabel: string): string {
+  if (!levelLabel || levelLabel === NOT_SPECIFIED) return 'a business like yours';
+  const l = levelLabel.toLowerCase();
+  return `${/^[aeiou]/.test(l) ? 'an' : 'a'} ${l} business`;
+}
+
+/** Industry · stage · team, leaving out anything the client skipped. */
+export function profileLine(...labels: string[]): string {
+  return labels.filter((l) => l && l !== NOT_SPECIFIED).join(' · ');
+}

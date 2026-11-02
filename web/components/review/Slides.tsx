@@ -4,7 +4,7 @@ import { Icon } from '@/components/Icon';
 import { contactLinks, ContactButtons } from '@/components/results/ContactCta';
 import { Gauge } from '@/components/results/Gauge';
 import { bigScale, KeyPointChip, kpStyle, sectionFor } from '@/components/results/keyPointMeta';
-import { formatDate, goalLabels } from '@/components/results/labels';
+import { formatDate, goalLabels, profileLine } from '@/components/results/labels';
 import type { ReportSource } from '@/components/results/useReportData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { BRAND } from '@/lib/brand';
@@ -55,7 +55,7 @@ export function TitleSlide({ results, source }: { results: Results; source: Repo
           {results.businessName}
         </h1>
         <p className="mt-[clamp(12px,2.6cqh,28px)] text-white/85" style={{ fontSize: HEADLINE }}>
-          {results.industryLabel} · {results.levelLabel} · {results.teamLabel}
+          {profileLine(results.industryLabel, results.levelLabel, results.teamLabel)}
         </p>
         <div className="mt-[clamp(18px,4.5cqh,48px)] flex flex-wrap gap-x-8 gap-y-2 text-white/75" style={{ fontSize: DETAIL }}>
           <span>{formatDate(source.completedAt)}</span>

@@ -24,7 +24,7 @@ export function ContactCapture({ businessName }: { businessName: string }) {
 
   if (saved) {
     return (
-      <section className="no-print flex items-start gap-3 rounded-[22px] border border-ok/30 bg-ok-soft px-5 py-5 sm:px-7">
+      <section id="callback" className="no-print flex items-start gap-3 rounded-[22px] border border-ok/30 bg-ok-soft px-5 py-5 sm:px-7">
         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ok-ink" aria-hidden="true" />
         <div>
           <p className="text-[15px] font-semibold text-ink">Thanks — we’ve got your details.</p>
@@ -65,6 +65,7 @@ export function ContactCapture({ businessName }: { businessName: string }) {
 
   return (
     <section
+      id="callback"
       aria-labelledby="contact-capture-title"
       className="no-print overflow-hidden rounded-[22px] border border-brand/25 bg-card shadow-card"
     >

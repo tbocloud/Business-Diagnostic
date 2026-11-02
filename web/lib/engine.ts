@@ -304,7 +304,7 @@ function buildKeyPoints(args: {
     label: 'Overall health',
     big: `${overall}/100`,
     headline: band.label,
-    detail: `The guide level for a business at the “${stage.toLowerCase()}” stage is ${target}. ${band.blurb}${coverage}`,
+    detail: `${stage === 'Not specified' ? 'The guide level for a business like yours' : `The guide level for a business at the “${stage.toLowerCase()}” stage`} is ${target}. ${band.blurb}${coverage}`,
     talk: above
       ? `Open with the win: they are above the guide level for their stage. Then move on: “Let's find where the next jump comes from.”`
       : `Keep it calm: “This is a starting point, not a grade. Every business has gaps — what matters is fixing the right ones first.” Don't dwell on the number; move to what's working.`,

@@ -79,7 +79,8 @@ export function ResultsApp() {
 
       <ReportBody
         results={results}
-        afterRealGap={!isShared ? <ContactCapture businessName={results.businessName} /> : undefined}
+        cta={!isShared ? <ContactCapture businessName={results.businessName} /> : undefined}
+        onGetHelp={!isShared ? scrollToCallback : undefined}
         footer={
           <>
             <ContactCta businessName={results.businessName} />
@@ -89,6 +90,14 @@ export function ResultsApp() {
       />
     </Frame>
   );
+}
+
+/** "Get help with …" from an area's panel → the callback form, phone field focused. */
+function scrollToCallback() {
+  const el = document.getElementById('callback');
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.querySelector<HTMLInputElement>('input[type="tel"]')?.focus({ preventScroll: true });
 }
 
 function Banner({

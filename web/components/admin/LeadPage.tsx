@@ -170,7 +170,7 @@ function LeadView({ data, onChange }: { data: LeadDetail; onChange: (d: LeadDeta
                 </ButtonLink>
                 <CopyLink url={() => `${window.location.origin}/results/${hash}`} />
               </Card>
-              <ReportBody results={results} compact />
+              <ReportBody results={results} compact defaultExpanded />
             </>
           ) : legacy ? (
             <LegacyReport legacy={legacy} />
