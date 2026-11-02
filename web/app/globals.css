@@ -5,21 +5,22 @@
 /* ─────────────────────────────────────────────────────────────
    Design tokens — "a premium health check-up report".
    RGB channels so Tailwind opacity modifiers work.
+   Pure white background with neutral grey lines and fills.
    Data & status colors were validated with the dataviz palette
-   validator against the ivory card (#FFFDF9) and paper (#F7F3EC).
+   validator against the white surface (#FFFFFF).
    ───────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
 
-  --paper: 247 243 236; /* #F7F3EC warm ivory */
-  --paper-deep: 239 233 222; /* #EFE9DE */
-  --card: 255 253 249; /* #FFFDF9 */
-  --line: 230 223 211; /* #E6DFD3 hairline */
-  --line-strong: 205 196 181; /* #CDC4B5 */
+  --paper: 255 255 255; /* #FFFFFF pure white page */
+  --paper-deep: 244 245 247; /* #F4F5F7 light grey for subtle fills */
+  --card: 255 255 255; /* #FFFFFF cards (set apart by border + shadow) */
+  --line: 229 231 235; /* #E5E7EB hairline */
+  --line-strong: 209 213 219; /* #D1D5DB */
 
   --ink: 27 35 48; /* #1B2330 */
   --ink-2: 74 83 97; /* #4A5361 */
-  --muted: 95 103 116; /* #5F6774 — 5.2:1 on paper */
+  --muted: 95 103 116; /* #5F6774 — 5.8:1 on white */
 
   --brand: 19 78 74; /* #134E4A forest-teal */
   --brand-deep: 13 58 55; /* #0D3A37 */
@@ -45,9 +46,9 @@
   --risk: 210 72 58; /* #D2483A */
   --risk-ink: 164 48 31; /* #A4301F */
   --risk-soft: 251 231 227; /* #FBE7E3 */
-  --na: 169 163 151; /* #A9A397 */
-  --na-ink: 94 90 82; /* #5E5A52 */
-  --na-soft: 239 237 232; /* #EFEDE8 */
+  --na: 160 166 175; /* #A0A6AF */
+  --na-ink: 85 91 100; /* #555B64 */
+  --na-soft: 241 242 244; /* #F1F2F4 */
 }
 
 @layer base {

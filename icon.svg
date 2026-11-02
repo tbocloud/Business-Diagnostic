@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="15" fill="#134E4A"/>
   <text x="32" y="40.5" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="21" font-weight="700" letter-spacing="0.5" fill="#FFFFFF">TBO</text>
-  <circle cx="53" cy="11" r="7" fill="#E58A2E" stroke="#F7F3EC" stroke-width="3"/>
+  <circle cx="53" cy="11" r="7" fill="#E58A2E" stroke="#FFFFFF" stroke-width="3"/>
 </svg>
