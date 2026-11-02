@@ -14,9 +14,23 @@ run(function () {
     if ($id <= 0) fail('Missing lead id');
     if ($text === null) fail('Write a note first');
 
-    $row = fetch_lead_row($id);
-    if (!$row || !can_access_lead($user, $row)) fail('Lead not found', 404);
-
-    add_activity($id, $user['id'], 'note', $text);
+    // Lock the lead row while checking access and writing, so a BDE can't add a note to a
+    // lead that another BDE takes in the same instant.
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('SELECT * FROM submissions WHERE id = ? LIMIT 1 FOR UPDATE');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch() ?: null;
+        if (!$row || !can_access_lead($user, $row)) {
+            $pdo->rollBack();
+            fail('Lead not found', 404);
+        }
+        add_activity($id, $user['id'], 'note', $text);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
     json_out(['notes' => notes_for($id, user_names())], 201);
 });

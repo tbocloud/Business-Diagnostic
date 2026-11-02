@@ -48,17 +48,23 @@ export function useReportData(): ReportData {
   const [shared, setShared] = useState<Shared | null>(null);
 
   useEffect(() => {
-    // Short link from the CRM: /results/?id=123&k=… — load that report from the server.
-    // It then behaves exactly like a shared (#r=) link, so review mode and links keep working.
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-    const k = params.get('k');
-    if (id && k && !/[#&]r=/.test(window.location.hash)) {
-      let live = true;
+    // Re-read whenever the part after "#" changes, and only ever apply the newest answer
+    // (an older, slower request must not overwrite a newer one).
+    let current = 0;
+    const load = () => {
+      const mine = ++current;
+      // Short link from the CRM: /results/#id=123&k=… — load that report from the server.
+      // The id and key sit after "#", so browsers never send them to the server (no access-log
+      // or Referer exposure). The report then behaves exactly like a shared (#r=) link.
+      const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const id = params.get('id');
+      const k = params.get('k');
+      if (!id || !k || params.has('r')) return setShared(readShared());
+      setShared(null); // loading
       publicApi
         .report(id, k)
         .then((d) => {
-          if (!live) return;
+          if (mine !== current) return;
           const report = normalizeReport(d.profile, d.answers);
           if (!report) return setShared({ kind: 'invalid' });
           const completedAt = d.completedAt ?? undefined;
@@ -68,15 +74,14 @@ export function useReportData(): ReportData {
             hash: `#r=${encodeResults(report.profile, report.answers, completedAt)}`,
           });
         })
-        .catch(() => live && setShared({ kind: 'invalid' }));
-      return () => {
-        live = false;
-      };
-    }
-    const update = () => setShared(readShared());
-    update();
-    window.addEventListener('hashchange', update);
-    return () => window.removeEventListener('hashchange', update);
+        .catch(() => mine === current && setShared({ kind: 'invalid' }));
+    };
+    load();
+    window.addEventListener('hashchange', load);
+    return () => {
+      current = -1; // ignore anything still in flight
+      window.removeEventListener('hashchange', load);
+    };
   }, []);
 
   const own: ReportSource | null = useMemo(() => {

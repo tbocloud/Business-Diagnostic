@@ -22,15 +22,16 @@ function new_report_key(): string {
     return bin2hex(random_bytes(12));
 }
 
-/** Public link to a client's report: /results/?id=123&k=… (short enough for a normal CRM field). */
+/**
+ * Public link to a client's report: https://<SITE_URL>/results/#id=123&k=…
+ * - Built ONLY from SITE_URL, never from request headers (a faked Host header must not be
+ *   able to plant a link to another site in the CRM, where staff click it).
+ * - The id and key sit after "#", which browsers never send to the server — so the key
+ *   doesn't end up in access logs or Referer headers.
+ */
 function report_link(int $id, string $key): string {
-    $base = SITE_URL;
-    if ($base === '' && !empty($_SERVER['HTTP_HOST'])) {
-        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-        $base = ($https ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'];
-    }
-    if ($base === '') throw new RuntimeException('SITE_URL is not set, so the report link cannot be built');
-    return rtrim($base, '/') . "/results/?id=$id&k=$key";
+    if (SITE_URL === '') throw new RuntimeException('SITE_URL is not set, so the report link cannot be built');
+    return rtrim(SITE_URL, '/') . "/results/#id=$id&k=$key";
 }
 
 /** One call to the Frappe REST API. Returns the decoded JSON, or throws with a short, readable reason. */

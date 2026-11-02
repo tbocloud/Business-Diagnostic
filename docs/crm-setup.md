@@ -51,7 +51,7 @@ Only `report_link` is mandatory, because clients can leave the other details bla
 When the CRM admin has sent the URL, API key and secret:
 
 1. **Database:** run `db/002_crm_link.sql` once in phpMyAdmin, after `001`.
-2. **Settings:** on the server, copy the CRM lines from `api/config.example.php` into `api/config.php` and fill them in:
+2. **Settings** (`SITE_URL` is **required**: without it nothing is sent, and the error is recorded): on the server, copy the CRM lines from `api/config.example.php` into `api/config.php` and fill them in:
    ```php
    define('CRM_URL',        'https://crm.yourcompany.com');
    define('CRM_API_KEY',    '…');
@@ -82,7 +82,10 @@ When the CRM admin has sent the URL, API key and secret:
 ### How it behaves
 - **The client never waits for the CRM:** they get their report first, and the CRM is updated just after.
 - **CRM unreachable or a wrong key:** the error is saved on the submission (`crm_error`), and the retry job sends it later.
-- **Report links look like** `https://<site>/results/?id=123&k=<24 random characters>`. The key is the secret: a link with a wrong or missing key opens nothing.
+- **Report links look like** `https://<site>/results/#id=123&k=<24 random characters>`.
+  - The key is the secret: a link with a wrong or missing key opens nothing.
+  - Everything after `#` stays in the browser and is never sent to the server, so the key doesn't appear in server logs.
+  - Links are built only from `SITE_URL`, never from the visitor's request, so nobody can plant a link to another site in the CRM.
 
 ### Testing locally without the real CRM
 ```bash

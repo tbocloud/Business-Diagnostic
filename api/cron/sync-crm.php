@@ -32,10 +32,11 @@ $ids = db()->query(
 $ok = 0;
 foreach ($ids as $id) {
     crm_sync_submission((int) $id);
-    $stmt = db()->prepare('SELECT crm_error FROM submissions WHERE id = ?');
+    $stmt = db()->prepare('SELECT crm_ref, crm_error FROM submissions WHERE id = ?');
     $stmt->execute([(int) $id]);
-    $error = $stmt->fetchColumn();
-    if ($error === null) $ok++;
-    else echo "  #$id failed: $error\n";
+    $row = $stmt->fetch();
+    // Only a record name and no error mean it really synced (a busy lock skips without writing either).
+    if ($row && $row['crm_ref'] !== null && $row['crm_error'] === null) $ok++;
+    else echo "  #$id not synced: " . ($row['crm_error'] ?? 'skipped — another sync was running, will retry') . "\n";
 }
 echo 'Synced ' . $ok . ' of ' . count($ids) . " pending submission(s).\n";
