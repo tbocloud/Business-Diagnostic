@@ -18,6 +18,8 @@ foreach (['DB_HOST' => 'localhost', 'DB_PORT' => 3306, 'DB_USER' => 'root', 'DB_
 
 const LEAD_STATUSES = ['new', 'contacted', 'meeting', 'proposal', 'won', 'lost'];
 const MAX_BODY_BYTES = 200000;
+/** Public (anonymous) endpoints: a real check-up is well under 20 KB. */
+const MAX_PUBLIC_BODY_BYTES = 64000;
 
 function db(): PDO {
     static $pdo = null;
@@ -66,11 +68,11 @@ function require_method(string ...$methods): string {
  * Parse a JSON body. Requiring Content-Type: application/json means a browser on another
  * site can't send it without a CORS preflight — part of the CSRF protection for the panel.
  */
-function json_body(): array {
+function json_body(int $maxBytes = MAX_BODY_BYTES): array {
     $type = $_SERVER['CONTENT_TYPE'] ?? '';
     if (stripos($type, 'application/json') !== 0) fail('Expected application/json', 415);
-    $raw = file_get_contents('php://input', false, null, 0, MAX_BODY_BYTES + 1);
-    if ($raw === false || strlen($raw) > MAX_BODY_BYTES) fail('Request too large', 413);
+    $raw = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
+    if ($raw === false || strlen($raw) > $maxBytes) fail('Request too large', 413);
     $data = json_decode($raw, true);
     if (!is_array($data)) fail('Invalid JSON');
     return $data;
@@ -145,6 +147,27 @@ function require_admin(): array {
 function can_access_lead(array $user, array $row): bool {
     if ($user['role'] === 'admin') return true;
     return $row['assigned_to'] === null || (int) $row['assigned_to'] === $user['id'];
+}
+
+/**
+ * Allow at most $max requests per $windowSeconds from this IP for $bucket, else 429.
+ * One atomic upsert per request: parallel requests each count.
+ * Uses REMOTE_ADDR on purpose — forwarded headers can be faked by the client.
+ */
+function rate_limit(string $bucket, int $max, int $windowSeconds): void {
+    $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 45);
+    db()->prepare(
+        'INSERT INTO rate_limits (ip, bucket, hits, window_start) VALUES (?, ?, 1, NOW())
+         ON DUPLICATE KEY UPDATE
+           hits = IF(window_start <= DATE_SUB(NOW(), INTERVAL ? SECOND), 1, hits + 1),
+           window_start = IF(window_start <= DATE_SUB(NOW(), INTERVAL ? SECOND), NOW(), window_start)'
+    )->execute([$ip, $bucket, $windowSeconds, $windowSeconds]);
+    $stmt = db()->prepare('SELECT hits FROM rate_limits WHERE ip = ? AND bucket = ?');
+    $stmt->execute([$ip, $bucket]);
+    if ((int) $stmt->fetchColumn() > $max) {
+        header('Retry-After: ' . $windowSeconds);
+        fail('Too many requests from your network. Please try again a little later.', 429);
+    }
 }
 
 function add_activity(int $submissionId, ?int $userId, string $kind, string $body): void {

@@ -1,3 +1,4 @@
+import { normalizeReport } from './normalize';
 import type { Answers, Profile } from './types';
 
 // A results link carries the answers inside the URL hash (#r=...), so a client can
@@ -41,9 +42,12 @@ export function encodeResults(profile: Profile, answers: Answers, completedAt?: 
 
 export function decodeResults(token: string): { profile: Profile; answers: Answers; completedAt?: string } | null {
   try {
-    const data = JSON.parse(fromBase64Url(token)) as Payload;
-    if (data?.v !== 1 || typeof data.p?.businessName !== 'string' || typeof data.a !== 'object') return null;
-    return { profile: { ...data.p, goals: Array.isArray(data.p.goals) ? data.p.goals : [] }, answers: data.a, completedAt: data.t };
+    // The token is untrusted URL input — anyone can edit it.
+    const data = JSON.parse(fromBase64Url(token)) as Partial<Payload> | null;
+    if (!data || data.v !== 1) return null;
+    const report = normalizeReport(data.p, data.a);
+    if (!report) return null;
+    return { ...report, completedAt: typeof data.t === 'string' ? data.t : undefined };
   } catch {
     return null;
   }

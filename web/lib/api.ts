@@ -132,7 +132,7 @@ export interface LeadsResponse {
 
 export interface LeadNote {
   id: number;
-  kind: 'note' | 'status' | 'assign' | 'followup' | 'system';
+  kind: 'note' | 'status' | 'assign' | 'followup' | 'contact' | 'system';
   body: string;
   createdAt: string | null;
   author: string | null;
@@ -163,8 +163,8 @@ export interface LeadQuery {
 }
 
 export const adminApi = {
-  setupStatus: () => call<{ needsSetup: boolean }>('admin/setup.php'),
-  setup: (body: { name: string; email: string; password: string }) => call<{ user: AdminUser }>('admin/setup.php', { body }),
+  setupStatus: () => call<{ needsSetup: boolean; setupReady: boolean }>('admin/setup.php'),
+  setup: (body: { setupToken: string; name: string; email: string; password: string }) => call<{ user: AdminUser }>('admin/setup.php', { body }),
   login: (body: { email: string; password: string }) => call<{ user: AdminUser }>('admin/login.php', { body }),
   logout: () => call<{ ok: true }>('admin/logout.php', { body: {} }),
   me: () => call<{ user: AdminUser }>('admin/me.php'),

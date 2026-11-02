@@ -399,15 +399,23 @@ function buildKeyPoints(args: {
   }
 
   // 6 — The opportunity
-  if (potential !== null && potential > overall) {
+  // Decide per area, not by comparing the two rounded averages: one area a couple of points
+  // short can round `potential` down to `overall`, and "every area is on target" would be false.
+  const behind = scored.filter((s) => s.score! < s.target);
+  if (behind.length > 0) {
+    const lifts = potential !== null && potential > overall;
     points.push({
       id: 'opportunity',
       tone: 'neutral',
       icon: 'TrendingUp',
       label: 'The opportunity',
-      big: `${overall} → ${potential}`,
-      headline: 'Where your score goes when every area reaches its target',
-      detail: `Lifting the areas below target up to the guide level for your stage would move your overall score from ${overall} to ${potential}. Your 7-, 30- and 90-day plan shows the way.`,
+      big: lifts ? `${overall} → ${potential}` : 'Almost there',
+      headline: lifts
+        ? 'Where your score goes when every area reaches its target'
+        : `${behind.length === 1 ? behind[0].title + ' is' : behind.length + ' areas are'} just short of the guide level`,
+      detail: lifts
+        ? `Lifting the areas below target up to the guide level for your stage would move your overall score from ${overall} to ${potential}. Your 7-, 30- and 90-day plan shows the way.`
+        : `Everything else is at or above the guide level for your stage. A few small fixes close the gap — your 7-, 30- and 90-day plan shows them.`,
       talk: 'Close with the path, not the problem. Walk through the 90-day plan, then offer the follow-up call to agree the first three fixes together.',
       ask: 'If we could fix just one of these in the next 90 days, which would make the biggest difference to you?',
     });

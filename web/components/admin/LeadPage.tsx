@@ -21,6 +21,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { adminApi, ApiError, type LeadDetail, type LeadNote, type LeadStatus } from '@/lib/api';
 import { BRAND } from '@/lib/brand';
 import { computeResults } from '@/lib/engine';
+import { normalizeReport } from '@/lib/normalize';
 import { encodeResults } from '@/lib/share';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { ReportBody } from '@/components/results/ReportBody';
@@ -76,7 +77,9 @@ function BackLink() {
 }
 
 function LeadView({ data, onChange }: { data: LeadDetail; onChange: (d: LeadDetail) => void }) {
-  const { lead, report, legacy } = data;
+  const { lead, legacy } = data;
+  // Stored answers came from the public submit endpoint — clean them before scoring.
+  const report = useMemo(() => (data.report ? normalizeReport(data.report.profile, data.report.answers) : null), [data.report]);
   const results = useMemo(() => (report ? computeResults(report.profile, report.answers) : null), [report]);
   const hash = useMemo(() => (report ? `#r=${encodeResults(report.profile, report.answers)}` : ''), [report]);
   const name = lead.company || 'Unnamed business';
@@ -403,6 +406,7 @@ const NOTE_ICON: Record<LeadNote['kind'], typeof History> = {
   status: Check,
   assign: UserRound,
   followup: CalendarClock,
+  contact: Phone,
   system: History,
 };
 
@@ -414,7 +418,7 @@ function NotesCard({ data, onChange }: { data: LeadDetail; onChange: (d: LeadDet
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (busy || !text.trim()) return; // Ctrl/Cmd+Enter bypasses the disabled button
     setBusy(true);
     setError(null);
     try {

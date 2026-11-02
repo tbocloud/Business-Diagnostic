@@ -16,7 +16,9 @@ const SECTION_IDS = ['sales', 'marketing', 'customers', 'operations', 'finance',
 
 run(function () {
     require_method('POST');
-    $body = json_body();
+    // Generous for real people (an office sharing one IP), tight enough to stop a flood.
+    rate_limit('submit', 30, 3600);
+    $body = json_body(MAX_PUBLIC_BODY_BYTES);
 
     $profile = is_array($body['profile'] ?? null) ? $body['profile'] : null;
     $answers = is_array($body['answers'] ?? null) ? $body['answers'] : null;

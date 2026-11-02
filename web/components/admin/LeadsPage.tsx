@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import { CalendarClock, ChevronLeft, ChevronRight, Inbox, Loader2, MessageCircle, Phone, Search, Sparkles, Trophy } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { adminApi, ApiError, type LeadQuery, type LeadRow, type LeadsResponse } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { useAdminUser } from './AdminShell';
@@ -21,30 +21,21 @@ function loadFilters(): LeadQuery {
 
 export function LeadsPage() {
   const user = useAdminUser();
-  const [query, setQuery] = useState<LeadQuery>({ status: 'all', owner: 'all', sort: 'newest', page: 1 });
-  const [search, setSearch] = useState('');
+  // Filters are remembered while the BDE hops between the list and a lead. This page only
+  // renders in the browser (after the login check), so reading sessionStorage here is safe.
+  const [query, setQuery] = useState<LeadQuery>(() => ({ status: 'all', owner: 'all', sort: 'newest', page: 1, ...loadFilters() }));
+  const [search, setSearch] = useState(() => query.q ?? '');
   const [data, setData] = useState<LeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const restored = useRef(false);
-
-  // Remember filters while the BDE hops between the list and a lead.
-  useEffect(() => {
-    const saved = loadFilters();
-    setQuery((q) => ({ ...q, ...saved }));
-    setSearch(saved.q ?? '');
-    restored.current = true;
-  }, []);
 
   // Debounce the search box.
   useEffect(() => {
-    if (!restored.current) return;
-    const t = setTimeout(() => setQuery((q) => (q.q === search ? q : { ...q, q: search, page: 1 })), 300);
+    const t = setTimeout(() => setQuery((q) => ((q.q ?? '') === search ? q : { ...q, q: search, page: 1 })), 300);
     return () => clearTimeout(t);
   }, [search]);
 
   useEffect(() => {
-    if (!restored.current) return;
     try {
       sessionStorage.setItem(FILTER_KEY, JSON.stringify(query));
     } catch {

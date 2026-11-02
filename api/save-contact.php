@@ -11,7 +11,8 @@ require_once __DIR__ . '/lib/bootstrap.php';
 
 run(function () {
     require_method('POST');
-    $body = json_body();
+    rate_limit('contact', 20, 3600);
+    $body = json_body(MAX_PUBLIC_BODY_BYTES);
 
     $id    = (int) ($body['submissionId'] ?? 0);
     $token = is_string($body['token'] ?? null) ? $body['token'] : '';

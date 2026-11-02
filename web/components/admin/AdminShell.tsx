@@ -20,7 +20,7 @@ export function useAdminUser(): AdminUser {
   return u;
 }
 
-type Gate = { kind: 'loading' } | { kind: 'login'; needsSetup: boolean } | { kind: 'in'; user: AdminUser } | { kind: 'down'; message: string };
+type Gate = { kind: 'loading' } | { kind: 'login'; needsSetup: boolean; setupReady?: boolean } | { kind: 'in'; user: AdminUser } | { kind: 'down'; message: string };
 
 /** Auth gate + header for every /admin page. */
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -33,8 +33,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         try {
-          const { needsSetup } = await adminApi.setupStatus();
-          setGate({ kind: 'login', needsSetup });
+          const { needsSetup, setupReady } = await adminApi.setupStatus();
+          setGate({ kind: 'login', needsSetup, setupReady });
         } catch (e2) {
           setGate({ kind: 'down', message: e2 instanceof ApiError ? e2.message : 'The server is not responding.' });
         }
@@ -65,7 +65,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </Centered>
     );
   }
-  if (gate.kind === 'login') return <LoginScreen needsSetup={gate.needsSetup} onIn={(user) => setGate({ kind: 'in', user })} />;
+  if (gate.kind === 'login') {
+    if (gate.needsSetup && !gate.setupReady) return <SetupLocked onRetry={() => void check()} />;
+    return <LoginScreen needsSetup={gate.needsSetup} onIn={(user) => setGate({ kind: 'in', user })} />;
+  }
 
   return (
     <UserContext.Provider value={gate.user}>
@@ -138,8 +141,28 @@ function AdminHeader({ user, onLogout }: { user: AdminUser; onLogout: () => void
   );
 }
 
+/** No accounts yet, and no SETUP_TOKEN on the server: explain the one step needed. */
+function SetupLocked({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Centered title="One step before the first login">
+      <p className="text-[14px] leading-relaxed text-ink-2">
+        To create the admin account safely, add a secret setup code to <code className="rounded bg-paper-deep px-1">api/config.php</code> on
+        the server (12+ characters, anything you like):
+      </p>
+      <pre className="mt-3 whitespace-pre-wrap break-all rounded-xl bg-ink px-3 py-2.5 text-left text-[12.5px] text-white">
+        define(&apos;SETUP_TOKEN&apos;, &apos;choose-a-long-secret&apos;);
+      </pre>
+      <p className="mt-3 text-[13px] text-muted">Then reload this page and enter the same code. You can delete the line once the admin exists.</p>
+      <Button className="mt-5" onClick={onRetry}>
+        I’ve added it — reload
+      </Button>
+    </Centered>
+  );
+}
+
 function LoginScreen({ needsSetup, onIn }: { needsSetup: boolean; onIn: (u: AdminUser) => void }) {
-  const ids = { name: useId(), email: useId(), pass: useId() };
+  const ids = { token: useId(), name: useId(), email: useId(), pass: useId() };
+  const [setupToken, setSetupToken] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -151,7 +174,7 @@ function LoginScreen({ needsSetup, onIn }: { needsSetup: boolean; onIn: (u: Admi
     setBusy(true);
     setError(null);
     try {
-      const { user } = needsSetup ? await adminApi.setup({ name, email, password }) : await adminApi.login({ email, password });
+      const { user } = needsSetup ? await adminApi.setup({ setupToken, name, email, password }) : await adminApi.login({ email, password });
       onIn(user);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong.');
@@ -164,10 +187,24 @@ function LoginScreen({ needsSetup, onIn }: { needsSetup: boolean; onIn: (u: Admi
     <Centered title={needsSetup ? 'Create the admin account' : 'BDE panel'}>
       <p className="text-[14px] leading-relaxed text-ink-2">
         {needsSetup
-          ? 'No accounts exist yet. This first account becomes the admin — you can add BDEs afterwards.'
+          ? 'No accounts exist yet. This first account becomes the admin — you can add BDEs afterwards. You’ll need the SETUP_TOKEN from api/config.php.'
           : `Log in to see ${BRAND.product} leads.`}
       </p>
       <form onSubmit={submit} className="mt-5 grid gap-3.5 text-left">
+        {needsSetup && (
+          <div>
+            <FieldLabel htmlFor={ids.token}>Setup code</FieldLabel>
+            <input
+              id={ids.token}
+              className="field"
+              type="password"
+              autoComplete="off"
+              required
+              value={setupToken}
+              onChange={(e) => setSetupToken(e.target.value)}
+            />
+          </div>
+        )}
         {needsSetup && (
           <div>
             <FieldLabel htmlFor={ids.name}>Your name</FieldLabel>

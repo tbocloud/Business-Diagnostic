@@ -31,6 +31,9 @@ run(function () {
     if ($method === 'POST') {
         $sets = [];
         $params = [];
+        // History entries are collected first and written with the update in one transaction,
+        // so a request that fails validation half-way never leaves a "changed" note behind.
+        $activity = [];
 
         if (array_key_exists('status', $body)) {
             $status = $body['status'];
@@ -38,7 +41,7 @@ run(function () {
             if ($status !== $row['status']) {
                 $sets[] = 'status = ?';
                 $params[] = $status;
-                add_activity($id, $user['id'], 'status', 'Status: ' . STATUS_LABELS[$row['status']] . ' → ' . STATUS_LABELS[$status]);
+                $activity[] = ['status', 'Status: ' . STATUS_LABELS[$row['status']] . ' → ' . STATUS_LABELS[$status]];
             }
         }
 
@@ -58,7 +61,7 @@ run(function () {
                 }
                 $sets[] = 'assigned_to = ?';
                 $params[] = $to;
-                add_activity($id, $user['id'], 'assign', $to === null ? 'Lead unassigned' : 'Assigned to ' . ($names[$to] ?? 'someone'));
+                $activity[] = ['assign', $to === null ? 'Lead unassigned' : 'Assigned to ' . ($names[$to] ?? 'someone')];
             }
         }
 
@@ -68,7 +71,7 @@ run(function () {
             if ($date !== $row['follow_up_on']) {
                 $sets[] = 'follow_up_on = ?';
                 $params[] = $date;
-                add_activity($id, $user['id'], 'followup', $date ? 'Follow-up set for ' . date('j M Y', strtotime($date)) : 'Follow-up cleared');
+                $activity[] = ['followup', $date ? 'Follow-up set for ' . date('j M Y', strtotime($date)) : 'Follow-up cleared'];
             }
         }
 
@@ -78,13 +81,31 @@ run(function () {
             $email = str_or_null($c['email'] ?? null, 190);
             if ($phone !== null && !preg_match('/^\+?[0-9 ()\-]{6,30}$/', $phone)) fail('That phone number doesn’t look right');
             if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) fail('That email doesn’t look right');
-            array_push($sets, 'contact_name = ?', 'phone_number = ?', 'email = ?');
-            array_push($params, str_or_null($c['name'] ?? null, 120), $phone, $email);
+            $name = str_or_null($c['name'] ?? null, 120);
+            $changes = [];
+            foreach ([['name', $name, 'contact_name'], ['phone', $phone, 'phone_number'], ['email', $email, 'email']] as [$label, $new, $col]) {
+                if ($new === $row[$col]) continue;
+                $changes[] = $label . ': ' . ($row[$col] ?? '—') . ' → ' . ($new ?? '—');
+            }
+            if ($changes) {
+                array_push($sets, 'contact_name = ?', 'phone_number = ?', 'email = ?');
+                array_push($params, $name, $phone, $email);
+                $activity[] = ['contact', 'Contact details changed (' . implode('; ', $changes) . ')'];
+            }
         }
 
         if ($sets) {
             $params[] = $id;
-            db()->prepare('UPDATE submissions SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+            $pdo = db();
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare('UPDATE submissions SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+                foreach ($activity as [$kind, $text]) add_activity($id, $user['id'], $kind, $text);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
             $row = fetch_lead_row($id);
         }
     }

@@ -44,7 +44,7 @@ The upgrade keeps every existing row. Old submissions are marked **legacy** and 
 What it adds:
 
 - **On `submissions`:** `source`, `contact_name`, `email`, `biggest_headache`, `real_gap`, `section_scores`, `results_summary`, the pipeline fields `status`, `assigned_to` and `follow_up_on`, plus `edit_token` and `updated_at`.
-- **New tables:** `bde_users` (team logins) and `lead_notes` (notes and activity history).
+- **New tables:** `bde_users` (team logins), `lead_notes` (notes and activity history) and `rate_limits` (anti-spam limits on the public form).
 
 New check-ups still fill the original columns where they map, so anything that reads them keeps working:
 
@@ -72,6 +72,10 @@ define('DB_PORT',     3306);
 define('DB_USER',     '...');
 define('DB_PASSWORD', '...');
 define('DB_NAME',     'biz_diagnostic');
+
+// Only needed once, to create the first admin (12+ characters, anything you like).
+// You can delete this line after the admin account exists.
+define('SETUP_TOKEN', 'choose-a-long-secret');
 ```
 
 The OpenAI key is no longer used and can be removed. Anything missing falls back to environment variables with the same names (see `.env.example`).
@@ -82,7 +86,9 @@ Deploy the repository root as you do today. Run the SQL **before** the new files
 
 ### 4. Create the first admin
 
-Open **`/admin/`**. When no accounts exist yet, it asks you to create the admin account. After that, the page is a normal login. Add BDEs under **Team**.
+Open **`/admin/`**. When no accounts exist yet, it asks for the **setup code** (the `SETUP_TOKEN` above), your name, email and a password, and that account becomes the admin. After that, the page is a normal login. Add BDEs under **Team**.
+
+The setup code matters because the repository is public: without it, anyone who found `/admin/` before you could make themselves admin.
 
 ---
 
@@ -142,4 +148,9 @@ Open http://localhost:8080. For quick UI-only work, `cd web && npm run dev` (htt
 - **Sessions:** cookies are `HttpOnly` + `SameSite=Strict` (+ `Secure` on HTTPS).
 - **API requests:** every write needs a JSON body, which also protects against cross-site requests.
 - **Client edits:** a client can only update their own submission, using a random token kept in their browser. Only a hash of it is stored.
+- **First admin:** creating it needs the `SETUP_TOKEN` from `api/config.php`, and a database lock stops two admins being created at once.
+- **Login lockout:** each attempt is reserved atomically *before* the password check, so even a burst of parallel requests gets at most 5 tries before the 15-minute lock.
+- **Public form limits:** at most 30 submissions and 20 "call me back" requests per hour from one IP address, and a 64 KB request size limit.
+- **History:** every change to a lead, including contact edits, is written in the same transaction as the change itself.
+- **Untrusted report data:** share links and stored answers are cleaned before scoring, so a tampered link shows "link looks incomplete" instead of crashing.
 - **Blocked paths:** `.htaccess` blocks `web/`, `db/`, `.git/` and `api/lib/` from the web and turns off directory listings.

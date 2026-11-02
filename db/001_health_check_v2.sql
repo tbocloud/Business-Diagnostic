@@ -47,8 +47,18 @@ CREATE TABLE IF NOT EXISTS lead_notes (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   submission_id  INT          NOT NULL,
   user_id        INT          NULL COMMENT 'NULL = system / client',
-  kind           VARCHAR(20)  NOT NULL DEFAULT 'note' COMMENT 'note|status|assign|followup|system',
+  kind           VARCHAR(20)  NOT NULL DEFAULT 'note' COMMENT 'note|status|assign|followup|contact|system',
   body           TEXT         NOT NULL,
   created_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_lead_notes_submission (submission_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Per-IP limits on the public endpoints (submit / "call me back"), so a script
+-- can't flood the panel with fake leads. Rows are tiny and reused per IP.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  ip            VARCHAR(45)  NOT NULL,
+  bucket        VARCHAR(20)  NOT NULL,
+  hits          INT          NOT NULL DEFAULT 0,
+  window_start  DATETIME     NOT NULL,
+  PRIMARY KEY (ip, bucket)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
