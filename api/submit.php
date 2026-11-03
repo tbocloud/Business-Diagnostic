@@ -3,7 +3,8 @@
 //  POST /api/submit.php
 //  Saves a finished health check (and re-saves it if the client edits answers).
 //
-//  Body: { submissionId?, token?, profile, answers, summary }
+//  Body: { submissionId?, token?, profile, answers, summary, openText? }
+//  openText: the client's typed note from the last step ("Anything else on your mind?").
 //  → { submissionId, token }
 //
 //  Scores are calculated in the browser by the same engine the client sees;
@@ -58,6 +59,8 @@ run(function () {
         ))),
     ];
 
+    $openText = str_or_null($body['openText'] ?? null, 3000);
+
     $company = str_or_null($profile['businessName'] ?? null, 255);
     $owner   = str_or_null($profile['ownerName'] ?? null, 120);
     $raw     = json_encode(['version' => 2, 'profile' => $profile, 'answers' => $answers], JSON_UNESCAPED_UNICODE);
@@ -94,6 +97,7 @@ run(function () {
             $sets = implode(', ', array_map(fn($c) => "$c = ?", array_keys($values)));
             $pdo->prepare("UPDATE submissions SET $sets WHERE id = ?")->execute([...array_values($values), $id]);
             add_activity($id, null, 'system', 'Client updated their answers. New score: ' . ($clean['overall'] ?? '–') . '/100.');
+            save_open_text($id, $openText);
             // Reply first, then update the CRM record (e.g. a changed business name).
             respond_then(['submissionId' => $id, 'token' => $token], 200, fn() => crm_sync_submission($id));
         }
@@ -110,10 +114,27 @@ run(function () {
     $pdo->prepare("INSERT INTO submissions ($cols) VALUES ($marks)")->execute(array_values($values));
     $newId = (int) $pdo->lastInsertId();
     add_activity($newId, null, 'system', 'Health check submitted. Score: ' . ($clean['overall'] ?? '–') . '/100.');
+    save_open_text($newId, $openText);
 
     // Reply first, then create the record in the CRM with the report link.
     respond_then(['submissionId' => $newId, 'token' => $token], 201, fn() => crm_sync_submission($newId));
 });
+
+/**
+ * The typed note from the last step, kept only if open-problems.php hasn't already saved it.
+ * A separate, fail-safe step: before db/003_open_problems.sql has run, the check-up itself still saves.
+ */
+function save_open_text(int $id, ?string $text): void {
+    if ($text === null) return;
+    try {
+        db()->prepare(
+            "UPDATE submissions SET open_text = ?, open_mode = COALESCE(open_mode, 'typed'), open_updated_at = NOW()
+              WHERE id = ? AND (open_text IS NULL OR open_text <> ?)"
+        )->execute([$text, $id, $text]);
+    } catch (Throwable $e) {
+        error_log("Could not save the open-step note for submission $id: " . $e->getMessage());
+    }
+}
 
 /** Only a hash of the client's token is stored. */
 function token_hash(string $token): string {

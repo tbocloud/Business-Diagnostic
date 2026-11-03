@@ -11,11 +11,15 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../lib/crm.php';
+require_once __DIR__ . '/../lib/ai.php';
 
 const FIELDS = ['business_name', 'contact_name', 'phone', 'email', 'report_link'];
+// Filled by the last step ("Anything else on your mind?"). Optional: without them the rest still syncs.
+const OPEN_FIELDS = ['problem_summary', 'client_conversation'];
 $failed = false;
 $ok   = function (string $m) { echo "  ✓ $m\n"; };
 $bad  = function (string $m, string $hint) use (&$failed) { $failed = true; echo "  ✗ $m\n    → $hint\n"; };
+$warn = function (string $m, string $hint) { echo "  ! $m\n    → $hint\n"; };
 
 echo "CRM connection check\n";
 
@@ -41,6 +45,16 @@ try {
     elseif (preg_match('/said 403/', $msg)) $bad($msg, 'The API user is missing Read permission on "' . CRM_DOCTYPE . '".');
     elseif (preg_match('/said 404/', $msg)) $bad($msg, 'The DocType "' . CRM_DOCTYPE . '" does not exist (check the exact name, or set CRM_DOCTYPE).');
     else $bad($msg, 'Usually a missing or misspelt field. The DocType needs exactly: ' . implode(', ', FIELDS) . '.');
+}
+
+// 2b. The two fields for the last step (optional — the website works without them)
+if (!$failed) {
+    try {
+        crm_request('GET', '/api/resource/' . rawurlencode(CRM_DOCTYPE) . '?fields=' . rawurlencode(json_encode(OPEN_FIELDS)) . '&limit_page_length=1');
+        $ok('DocType also has ' . implode(' and ', OPEN_FIELDS) . ' (the client\'s other problems)');
+    } catch (Throwable $e) {
+        $warn('DocType has no ' . implode(' / ', OPEN_FIELDS) . ' fields yet', 'Everything else still syncs. Ask the CRM admin to add them (Long Text) to see the client\'s other problems.');
+    }
 }
 
 // 3. Optional: prove Create works
@@ -70,6 +84,16 @@ try {
 } catch (Throwable $e) {
     $bad('Database is missing the CRM columns', 'Run db/002_crm_link.sql once in phpMyAdmin.');
 }
+try {
+    db()->query('SELECT open_mode, open_text, open_chat, open_summary, open_updated_at FROM submissions LIMIT 1');
+    $ok('Database has the last-step columns (db/003_open_problems.sql)');
+} catch (Throwable $e) {
+    $bad('Database is missing the last-step columns', 'Run db/003_open_problems.sql once in phpMyAdmin.');
+}
+
+// 5. The chat in the last step
+if (ai_enabled()) $ok('Chat is on (OPENAI_API_KEY set, model ' . AI_MODEL . ')');
+else $warn('Chat is off — no OPENAI_API_KEY', 'Clients can still type a note. Add OPENAI_API_KEY to api/config.php to switch the chat on.');
 
 echo $failed ? "\nNot ready yet — fix the ✗ items above and run this again.\n" : "\nAll good — the CRM connection is ready.\n";
 exit($failed ? 1 : 0);

@@ -13,6 +13,7 @@ import { KeyPoints } from './KeyPoints';
 import { RealGap } from './RealGap';
 import { ScoreHero } from './ScoreHero';
 import { StatStrip } from './StatStrip';
+import { YourNumbers } from './YourNumbers';
 
 const PRINT_FOOTNOTE =
   'This check is a guide based on your answers, not an audit. Targets are guide levels for a business at your stage, not industry statistics.';
@@ -82,6 +83,7 @@ export function ReportBody({
           {/* On paper the disclaimer sits under the numbers it qualifies. */}
           <p className="print-only text-[9pt] leading-snug text-muted">{PRINT_FOOTNOTE}</p>
         </div>
+        <YourNumbers facts={results.numbers} />
         {results.realGap && <RealGap gap={results.realGap} />}
         <Insights strengths={results.strengths} gaps={results.gaps} stats={results.stats} />
         <ActionPlan plan={results.actionPlan} businessName={results.businessName} />

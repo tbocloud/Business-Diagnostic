@@ -34,13 +34,21 @@ export function buildSummary(profile: Profile, results: Results): SubmissionSumm
 }
 
 let inFlight: Promise<boolean> | null = null;
+let queued: Promise<boolean> | null = null;
 
 /**
  * Save (or re-save) this browser's finished check-up to the team's database.
  * Never throws: the client's own report works even when the server can't be reached.
+ * A call made while a save is running queues one more save, so the newest answers always land.
  */
 export function syncSubmission(): Promise<boolean> {
-  if (inFlight) return inFlight;
+  if (inFlight) {
+    queued ??= inFlight.then(() => {
+      queued = null;
+      return syncSubmission();
+    });
+    return queued;
+  }
   const s = useCheck.getState();
   const profile: Profile = s.profile;
   const answers: Answers = s.answers;
@@ -53,6 +61,8 @@ export function syncSubmission(): Promise<boolean> {
       profile,
       answers,
       summary: buildSummary(profile, results),
+      // A typed note from the last step also travels with the check-up, in case sending it on its own failed.
+      ...(s.open.mode === 'type' && s.open.text.trim() ? { openText: s.open.text.trim().slice(0, 3000) } : {}),
     })
     .then(({ submissionId, token }) => {
       useCheck.getState().setSubmission(submissionId, token);

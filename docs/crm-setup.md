@@ -26,8 +26,10 @@ When a client finishes the health check, the website creates one record in the C
 | `phone` | Phone | Data | `Phone` | | ✓ |
 | `email` | Email | Data | `Email` | | |
 | `report_link` | Report Link | Data | `URL` | ✓ | |
+| `problem_summary` | Problem Summary | Text | | | |
+| `client_conversation` | Client's Own Words | Long Text | | | |
 
-Only `report_link` is mandatory, because clients can leave the other details blank.
+Only `report_link` is mandatory, because clients can leave the other details blank. The last two are filled when the client describes other problems at the end of the check (a short summary, and their own words: the note or the whole chat). They're optional for the CRM: without them, everything else still syncs.
 
 **Permissions:**
 - Sales User: Read

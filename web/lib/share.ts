@@ -31,6 +31,7 @@ function compact(answers: Answers): Answers {
   const out: Answers = {};
   for (const [id, a] of Object.entries(answers)) {
     if (a.skipped) out[id] = { selected: [], skipped: true };
+    else if (typeof a.value === 'number') out[id] = { selected: [], value: a.value };
     else if (a.selected.length || a.other?.trim()) out[id] = { selected: a.selected, ...(a.other?.trim() ? { other: a.other.trim() } : {}) };
   }
   return out;

@@ -7,12 +7,13 @@ import { useHasHydrated } from '@/hooks/useHasHydrated';
 import { scoreSection } from '@/lib/engine';
 import { PROFILE_BLOCKS, profileAnsweredCount } from '@/lib/profile';
 import { SECTION_BY_ID } from '@/lib/sections';
-import { sectionAtStep, useCheck } from '@/lib/store';
+import { LAST_STEP, OPEN_STEP, sectionAtStep, useCheck } from '@/lib/store';
 import { syncSubmission } from '@/lib/submit';
 import type { Ctx, SectionId } from '@/lib/types';
 import { PageSkeleton } from '@/components/ui/Skeleton';
 import { BuildingReport } from './BuildingReport';
 import { nextOpenStep, overallProgress, railStates, sectionCounts, sectionWasSkipped } from './flow';
+import { OpenStep } from './OpenStep';
 import { ProfileForm } from './ProfileForm';
 import { buildRailItems, MobileStepper, SectionRail } from './SectionRail';
 import { SectionForm } from './SectionForm';
@@ -28,6 +29,8 @@ export function CheckApp() {
   const step = useCheck((s) => s.step);
   const doneSections = useCheck((s) => s.doneSections);
   const completedAt = useCheck((s) => s.completedAt);
+  const openDone = useCheck((s) => s.openDone);
+  const open = useCheck((s) => s.open);
   const [building, setBuilding] = useState(false);
   /** The section just saved or skipped — shown as a small banner on the next form. */
   const [justDone, setJustDone] = useState<SectionId | null>(null);
@@ -40,20 +43,23 @@ export function CheckApp() {
     scrollTop();
   }, []);
 
-  /** After a form: open the next unfinished section, or build the report if none is left. */
+  const build = useCallback(() => {
+    setBuilding(true);
+    // Save to the team's database while the "Building your report…" screen shows.
+    void syncSubmission();
+    scrollTop();
+  }, []);
+
+  /** After a form: the next unfinished section, then the open step ("Anything else?"), then the report. */
   const moveOn = useCallback(
     (fromStep: number, finished: SectionId | null) => {
       const next = nextOpenStep(fromStep, useCheck.getState().doneSections);
       setJustDone(finished);
       if (next) go(next);
-      else {
-        setBuilding(true);
-        // Save to the team's database while the "Building your report…" screen shows.
-        void syncSubmission();
-        scrollTop();
-      }
+      else if (!useCheck.getState().openDone) go(OPEN_STEP);
+      else build();
     },
-    [go],
+    [go, build],
   );
 
   const onBuilt = useCallback(() => {
@@ -79,19 +85,41 @@ export function CheckApp() {
     );
   }
 
-  const progress = overallProgress({ step, profile, ctx, doneSections, building });
-  const states = railStates(step, doneSections, ctx, building);
-  const detail = section
-    ? (() => {
-        const c = sectionCounts(section.id, ctx);
-        return `${c.answered} of ${c.total} answered`;
-      })()
-    : `${profileAnsweredCount(profile)} of ${PROFILE_BLOCKS} answered`;
+  const progress = overallProgress({ step, profile, ctx, doneSections, building, openDone });
+  const said = open.text.trim().length > 0 || open.chat.some((l) => l.role === 'client');
+  const states = railStates(step, doneSections, ctx, building, { done: openDone, said });
+  const detail =
+    step === OPEN_STEP
+      ? 'Optional'
+      : section
+        ? (() => {
+            const c = sectionCounts(section.id, ctx);
+            return `${c.answered} of ${c.total} answered`;
+          })()
+        : `${profileAnsweredCount(profile)} of ${PROFILE_BLOCKS} answered`;
   const railItems = buildRailItems(states, building ? -1 : step, detail);
 
   let content: React.ReactNode;
   if (building) {
     content = <BuildingReport businessName={profile.businessName} onDone={onBuilt} />;
+  } else if (step === OPEN_STEP) {
+    content = (
+      <OpenStep
+        notice={justDone ? <DoneBanner id={justDone} ctx={ctx} /> : undefined}
+        onBack={() => {
+          setJustDone(null);
+          go(LAST_STEP);
+        }}
+        onDone={() => {
+          useCheck.getState().finishOpen();
+          setJustDone(null);
+          // Jumped here early? Finish the remaining sections first.
+          const next = nextOpenStep(0, useCheck.getState().doneSections);
+          if (next) go(next);
+          else build();
+        }}
+      />
+    );
   } else if (!section) {
     content = <ProfileForm onDone={() => moveOn(0, null)} />;
   } else {
@@ -104,7 +132,7 @@ export function CheckApp() {
         profile={profile}
         answers={answers}
         notice={justDone && justDone !== section.id ? <DoneBanner id={justDone} ctx={ctx} /> : undefined}
-        continueLabel={lastOne ? 'See my results' : 'Save & continue'}
+        continueLabel={lastOne && openDone ? 'See my results' : 'Save & continue'}
         onBack={() => {
           setJustDone(null);
           go(step - 1);
