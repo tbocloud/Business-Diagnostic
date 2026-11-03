@@ -84,6 +84,18 @@ The OpenAI key is no longer used and can be removed. Anything missing falls back
 
 > **Which wins, `config.php` or environment variables?** If the server has a **`DB_HOST` environment variable**, `api/config.php` is **not loaded at all**, and every setting must then come from environment variables (`DB_*`, `SETUP_TOKEN`, `CRM_*`, `SITE_URL`). This is how local runs (`dev/run-local.sh`) avoid touching the live database. Normal cPanel hosting sets no `DB_HOST` variable, so `config.php` is used as before.
 
+### Hosting in a sub-folder
+
+The live site runs in a sub-folder: `https://hrn.pxv.mybluehost.me/Business_Diagnostic_TBO/`. Three settings must agree with the folder name:
+
+| Where | Setting |
+|---|---|
+| `web/.env.production` | `NEXT_PUBLIC_BASE_PATH=/Business_Diagnostic_TBO`. Rebuild with `npm run deploy` after changing it |
+| `.htaccess` | `ErrorDocument 404 /Business_Diagnostic_TBO/404.html` |
+| `api/config.php` | `SITE_URL`, including the folder: `https://hrn.pxv.mybluehost.me/Business_Diagnostic_TBO` |
+
+To move the site to the root of its own domain later, empty `NEXT_PUBLIC_BASE_PATH`, set the 404 line to `/404.html`, update `SITE_URL`, then rebuild. `./dev/run-local.sh` serves the site under the same folder locally (http://localhost:8080/Business_Diagnostic_TBO/).
+
 ### 3. Upload / pull
 
 Deploy the repository root as you do today. Run the SQL **before** the new files go live.

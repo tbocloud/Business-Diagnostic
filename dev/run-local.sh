@@ -57,11 +57,22 @@ echo ' ready.'
 
 [ -f index.html ] || (cd web && npm install && npm run deploy)
 
+# Serve the site under the same sub-folder as the live host (web/.env.production → NEXT_PUBLIC_BASE_PATH),
+# by pointing a temporary web root's sub-folder at this repository.
+BASE_PATH="$(sed -n 's/^NEXT_PUBLIC_BASE_PATH=//p' web/.env.production 2>/dev/null | tr -d '[:space:]' | sed 's#/*$##')"
+DOCROOT="$PWD"
+if [ -n "$BASE_PATH" ]; then
+  DOCROOT="$(mktemp -d "${TMPDIR:-/tmp}/bhc-docroot-XXXXXX")"
+  mkdir -p "$DOCROOT$(dirname "$BASE_PATH")"
+  ln -s "$PWD" "$DOCROOT$BASE_PATH"
+  printf '<meta http-equiv="refresh" content="0; url=%s/">' "$BASE_PATH" > "$DOCROOT/index.html"
+fi
+
 echo
-echo "  Website:    http://localhost:$WEB_PORT"
-echo "  BDE panel:  http://localhost:$WEB_PORT/admin/   (first time: setup code \"$SETUP_TOKEN\")"
+echo "  Website:    http://localhost:$WEB_PORT$BASE_PATH/"
+echo "  BDE panel:  http://localhost:$WEB_PORT$BASE_PATH/admin/   (first time: setup code \"$SETUP_TOKEN\")"
 echo
 
 DB_HOST=127.0.0.1 DB_PORT="$DB_PORT_LOCAL" DB_USER=root DB_PASSWORD=local DB_NAME=biz_diagnostic \
 SETUP_TOKEN="$SETUP_TOKEN" PHP_CLI_SERVER_WORKERS=4 \
-  exec php -S "localhost:$WEB_PORT" -t .
+  exec php -S "localhost:$WEB_PORT" -t "$DOCROOT"
