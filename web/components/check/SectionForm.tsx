@@ -104,8 +104,12 @@ function QuestionBlock({
   profile: Profile;
 }) {
   const { setAnswer, skipQuestion, clearAnswer } = useCheck.getState();
+  if (q.type === 'number' && q.number) {
+    return <NumberQuestion question={q} number={number} answer={answer} profile={profile} />;
+  }
   const multi = q.type === 'multi';
   const selected = answer?.selected ?? [];
+  const full = multi && q.maxPicks !== undefined && selected.length >= q.maxPicks;
   // An "Other" box is open whenever `other` is present — even while it's still empty.
   const otherOpen = answer?.other !== undefined;
   const otherText = answer?.other ?? '';
@@ -136,9 +140,14 @@ function QuestionBlock({
       number={number}
       title={fill(q.text, profile)}
       hint={q.hint ? fill(q.hint, profile) : undefined}
-      tag={multi ? 'Pick all that apply' : undefined}
+      tag={multi ? (q.maxPicks ? `Pick up to ${q.maxPicks}` : 'Pick all that apply') : undefined}
       kind={multi ? 'checkbox' : 'radio'}
-      options={q.options.map((o) => ({ id: o.id, label: fill(o.label, profile) }))}
+      options={q.options.map((o) => ({
+        id: o.id,
+        label: fill(o.label, profile),
+        // At the pick limit, the rest wait until one is unpicked.
+        disabled: full && !selected.includes(o.id),
+      }))}
       selected={selected}
       onToggle={toggle}
       gridClassName={multi ? 'sm:grid-cols-2' : undefined}
@@ -153,6 +162,60 @@ function QuestionBlock({
               placeholder: multi ? 'Anything else you use? e.g. Excel for stock' : 'Tell us in your own words…',
             }
       }
+      answered={isAnswered(answer)}
+      skipped={!!answer?.skipped}
+      onSkip={() => skipQuestion(q.id)}
+      onUnskip={() => clearAnswer(q.id)}
+    />
+  );
+}
+
+/**
+ * A number question: a figure box ("₹ [15000] a month") plus quick choices such as "Not sure".
+ * Typing a figure clears the quick choice and picking a choice clears the figure — one answer at a time.
+ */
+function NumberQuestion({
+  question: q,
+  number,
+  answer,
+  profile,
+}: {
+  question: Question;
+  number: number;
+  answer?: Answer;
+  profile: Profile;
+}) {
+  const { setAnswer, skipQuestion, clearAnswer } = useCheck.getState();
+  const spec = q.number!;
+  const selected = answer?.selected ?? [];
+  const title = fill(q.text, profile);
+
+  return (
+    <ChoiceBlock
+      number={number}
+      title={title}
+      hint={q.hint ? fill(q.hint, profile) : undefined}
+      kind="radio"
+      options={q.options.map((o) => ({ id: o.id, label: fill(o.label, profile) }))}
+      selected={typeof answer?.value === 'number' ? [] : selected}
+      onToggle={(id) => setAnswer(q.id, { selected: [id] })}
+      gridClassName="sm:grid-cols-2"
+      figure={{
+        value: answer?.value,
+        onChange: (value, typed) => {
+          if (value !== undefined) return setAnswer(q.id, { selected: [], value });
+          // Empty or not a valid figure yet: drop the figure, keep a quick choice if one was picked.
+          if (typed.trim() === '' && selected.length === 0) return clearAnswer(q.id);
+          if (typeof answer?.value === 'number') clearAnswer(q.id);
+        },
+        min: spec.min,
+        max: spec.max,
+        step: spec.step,
+        prefix: spec.prefix,
+        unit: fill(spec.unit, profile),
+        placeholder: spec.placeholder,
+        label: title,
+      }}
       answered={isAnswered(answer)}
       skipped={!!answer?.skipped}
       onSkip={() => skipQuestion(q.id)}

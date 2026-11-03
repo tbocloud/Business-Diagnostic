@@ -45,6 +45,8 @@ export function normalizeAnswers(a: unknown): Answers | null {
     if (!isObj(v) || !Array.isArray(v.selected)) continue;
     const answer: Answer = { selected: v.selected.filter((x): x is string => typeof x === 'string') };
     if (typeof v.other === 'string') answer.other = v.other;
+    // Number questions: a finite figure within a sane range (each question checks its own range when asked).
+    if (typeof v.value === 'number' && Number.isFinite(v.value) && Math.abs(v.value) <= 1e12) answer.value = v.value;
     if (v.skipped === true) answer.skipped = true;
     out[id] = answer;
   }

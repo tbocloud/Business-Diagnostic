@@ -5,7 +5,8 @@
 //  Every finished health check becomes ONE record in the CRM DocType
 //  (default "Business Health Check") with basic client info and the
 //  link to their report. The same record is updated when the client
-//  later leaves a phone number / email.
+//  later leaves a phone number / email, or describes other problems in
+//  the last step (problem summary + their own words).
 //
 //  Switched off while CRM_URL / CRM_API_KEY / CRM_API_SECRET are empty.
 //  Setup steps for the CRM side: docs/crm-setup.md
@@ -80,7 +81,8 @@ function crm_sync_submission(int $id): void {
     if ((int) db()->query("SELECT GET_LOCK(" . db()->quote($lock) . ", 20)")->fetchColumn() !== 1) return;
 
     try {
-        $stmt = db()->prepare('SELECT id, company_name, contact_name, phone_number, email, report_key, crm_ref FROM submissions WHERE id = ?');
+        // SELECT * so the sync keeps working on a database that hasn't run db/003 yet (no open_* columns).
+        $stmt = db()->prepare('SELECT * FROM submissions WHERE id = ?');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         if (!$row) return;
@@ -97,6 +99,9 @@ function crm_sync_submission(int $id): void {
             'phone'         => $row['phone_number'],
             'email'         => $row['email'],
             'report_link'   => report_link($id, $row['report_key']),
+            // The last step ("Anything else on your mind?"). A CRM without these fields simply ignores them.
+            'problem_summary'     => crm_problem_summary($row),
+            'client_conversation' => crm_client_conversation($row),
         ];
 
         $doctype = rawurlencode(CRM_DOCTYPE);
@@ -121,4 +126,34 @@ function crm_sync_submission(int $id): void {
         } catch (Throwable $ignored) {
         }
     }
+}
+
+/** The team's short summary of what the client described in the last step: "• point" lines, or null. */
+function crm_problem_summary(array $row): ?string {
+    $summary = decode_json_col($row['open_summary'] ?? null);
+    $points = is_array($summary['points'] ?? null) ? $summary['points'] : [];
+    $lines = [];
+    foreach ($points as $p) {
+        if (is_string($p) && ($p = trim(strip_tags($p))) !== '') $lines[] = '• ' . $p;
+    }
+    return $lines ? implode("\n", $lines) : null;
+}
+
+/** The client's own words from the last step: their typed note, or the whole chat. Plain text, or null. */
+function crm_client_conversation(array $row): ?string {
+    $mode = $row['open_mode'] ?? null;
+    if ($mode === 'chat') {
+        $lines = decode_json_col($row['open_chat'] ?? null);
+        $out = [];
+        foreach (is_array($lines) ? $lines : [] as $l) {
+            if (!is_array($l) || !is_string($l['text'] ?? null)) continue;
+            $who = ($l['role'] ?? '') === 'client' ? 'Client' : 'Assistant';
+            $out[] = $who . ': ' . trim(strip_tags($l['text']));
+        }
+        $text = implode("\n\n", $out);
+    } else {
+        $text = trim(strip_tags((string) ($row['open_text'] ?? '')));
+    }
+    if ($text === '') return null;
+    return function_exists('mb_substr') ? mb_substr($text, 0, 20000) : substr($text, 0, 20000);
 }

@@ -23,6 +23,9 @@ foreach ([
     'CRM_URL' => '', 'CRM_API_KEY' => '', 'CRM_API_SECRET' => '', 'CRM_DOCTYPE' => 'Business Health Check',
     // Public address of this site, used to build the report links sent to the CRM.
     'SITE_URL' => '',
+    // AI for the last step's chat ("Anything else on your mind?"). Empty key = chat off (typing still works).
+    // OPENAI_API_KEY is the same setting the old GPT version of the site used.
+    'OPENAI_API_KEY' => '', 'AI_MODEL' => 'gpt-4o-mini', 'AI_BASE_URL' => 'https://api.openai.com/v1',
 ] as $key => $fallback) {
     if (!defined($key)) {
         $env = getenv($key);

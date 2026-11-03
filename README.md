@@ -38,8 +38,8 @@ Then, in phpMyAdmin, select the database and open the **SQL** tab.
 
 | Situation | Run |
 |---|---|
-| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, then `db/002_crm_link.sql`, **once each** |
-| **Fresh install** | `db/000_create_submissions.sql`, `db/001_health_check_v2.sql`, then `db/002_crm_link.sql` |
+| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, `db/002_crm_link.sql`, then `db/003_open_problems.sql`, **once each, in that order** |
+| **Fresh install** | `db/000_create_submissions.sql`, `db/001_health_check_v2.sql`, `db/002_crm_link.sql`, then `db/003_open_problems.sql` |
 
 The upgrade keeps every existing row. Old submissions are marked **legacy** and still show in the panel with their old scores and AI analysis.
 
@@ -134,6 +134,14 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 - the settings for `api/config.php`
 - `db/002_crm_link.sql`
 - the retry cron job
+
+## The last step: "Anything else on your mind?"
+
+After the eight areas, the client can describe other problems in their own words: **type a note**, or **talk it through** with a short chat that asks one question at a time (at most 8 messages). Their words go to the team only — the CRM record's **Problem Summary** (short points) and **Client's Own Words** (the note or the whole chat). The report never quotes them; it only uses which areas and services they touch, to rank the gaps and the services shown.
+
+- Needs `db/003_open_problems.sql`.
+- The chat needs `OPENAI_API_KEY` in `api/config.php` (the same setting the old GPT site used; model `gpt-4o-mini`, change with `AI_MODEL`). Without a key the chat hides and typing a note still works.
+- Locally: `MOCK_AI=1 ./dev/run-local.sh` starts a fake AI (`dev/mock-ai.php`), so the chat works with no key and no cost.
 
 ## Changing the website
 

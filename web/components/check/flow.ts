@@ -2,7 +2,7 @@ import { isAnswered } from '@/lib/engine';
 import { PROFILE_BLOCKS, profileAnsweredCount } from '@/lib/profile';
 import { questionsFor } from '@/lib/questions';
 import { SECTIONS } from '@/lib/sections';
-import { LAST_STEP } from '@/lib/store';
+import { LAST_STEP, OPEN_STEP } from '@/lib/store';
 import type { Ctx, Profile, SectionId } from '@/lib/types';
 
 export type RailState = 'done' | 'current' | 'upcoming' | 'skipped';
@@ -24,7 +24,16 @@ export function sectionCounts(id: SectionId, ctx: Ctx) {
 /** The client has moved past "About your business" (even if they left it blank). */
 const leftProfile = (step: number, doneSections: SectionId[]) => step > 0 || doneSections.length > 0;
 
-export function railStates(step: number, doneSections: SectionId[], ctx: Ctx, building = false): RailState[] {
+/** The last, open step: finished with something said, finished without (skipped), or not reached yet. */
+export type OpenProgress = { done: boolean; said: boolean };
+
+export function railStates(
+  step: number,
+  doneSections: SectionId[],
+  ctx: Ctx,
+  building = false,
+  open: OpenProgress = { done: false, said: false },
+): RailState[] {
   const current = building ? -1 : step;
   const profileState: RailState =
     current === 0
@@ -41,6 +50,7 @@ export function railStates(step: number, doneSections: SectionId[], ctx: Ctx, bu
       if (doneSections.includes(s.id)) return sectionWasSkipped(s.id, ctx) ? 'skipped' : 'done';
       return 'upcoming';
     }),
+    current === OPEN_STEP ? 'current' : open.done ? (open.said ? 'done' : 'skipped') : 'upcoming',
   ];
 }
 
@@ -58,8 +68,9 @@ export function overallProgress(args: {
   ctx: Ctx;
   doneSections: SectionId[];
   building?: boolean;
+  openDone?: boolean;
 }): number {
-  const { step, profile, ctx, doneSections, building } = args;
+  const { step, profile, ctx, doneSections, building, openDone } = args;
   if (building) return 1;
   let units = leftProfile(step, doneSections) ? 1 : profileAnsweredCount(profile) / PROFILE_BLOCKS;
   SECTIONS.forEach((s, i) => {
@@ -69,7 +80,9 @@ export function overallProgress(args: {
       units += c.total ? (c.answered + c.skipped) / c.total : 0;
     }
   });
-  return Math.min(1, units / (SECTIONS.length + 1));
+  if (openDone) units += 1;
+  // Profile + the sections + the open step.
+  return Math.min(1, units / (SECTIONS.length + 2));
 }
 
 export function minutesFor(questionCount: number): number {

@@ -3,14 +3,36 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { isAnswered } from './engine';
+import { OPEN_SIGNALS_ID, openSignalsAnswer } from './openSignals';
 import { EMPTY_PROFILE } from './profile';
 import { questionsFor } from './questions';
 import { SECTIONS } from './sections';
-import type { Answer, Answers, Profile, SectionId } from './types';
+import type { Answer, Answers, OpenSignals, Profile, SectionId } from './types';
 
-// Steps: 0 = "About your business" form, 1..SECTIONS.length = one form per section.
+// Steps: 0 = "About your business" form, 1..SECTIONS.length = one form per section,
+// then OPEN_STEP = "Anything else on your mind?" (optional: type a note or talk it through).
 export const PROFILE_STEP = 0;
 export const LAST_STEP = SECTIONS.length;
+export const OPEN_STEP = LAST_STEP + 1;
+
+export interface ChatLine {
+  role: 'client' | 'assistant';
+  text: string;
+}
+
+/** The last, open step. The words stay on this device and go to the team (CRM) — never into the report. */
+export interface OpenNote {
+  /** How the client chose to tell us; undefined until they pick. */
+  mode?: 'type' | 'chat';
+  /** Their typed note. */
+  text: string;
+  /** The chat so far, for showing it again (the server keeps its own copy). */
+  chat: ChatLine[];
+  /** The assistant wrapped up, or the message limit was reached. */
+  chatDone: boolean;
+}
+
+const EMPTY_OPEN: OpenNote = { text: '', chat: [], chatDone: false };
 export const sectionAtStep = (step: number) => (step >= 1 && step <= LAST_STEP ? SECTIONS[step - 1] : undefined);
 
 interface CheckState {
@@ -27,6 +49,9 @@ interface CheckState {
   submissionToken?: string;
   /** The client already left a phone/email on the results page. */
   contactSaved?: boolean;
+  open: OpenNote;
+  /** The client finished (or skipped) the last, open step. */
+  openDone: boolean;
 
   setProfile: (patch: Partial<Profile>) => void;
   setAnswer: (questionId: string, answer: Answer) => void;
@@ -41,6 +66,11 @@ interface CheckState {
   finish: () => void;
   setSubmission: (id: number, token: string) => void;
   setContactSaved: () => void;
+  setOpen: (patch: Partial<OpenNote>) => void;
+  addChatLine: (line: ChatLine) => void;
+  /** What the open step touches, as tags inside the answers (so every report view uses them). */
+  setOpenSignals: (signals: OpenSignals) => void;
+  finishOpen: () => void;
   reset: () => void;
 }
 
@@ -54,6 +84,8 @@ const initial = {
   submissionId: undefined as number | undefined,
   submissionToken: undefined as string | undefined,
   contactSaved: false,
+  open: EMPTY_OPEN,
+  openDone: false,
 };
 
 const withDone = (done: SectionId[], id: SectionId) => (done.includes(id) ? done : [...done, id]);
@@ -112,7 +144,7 @@ export const useCheck = create<CheckState>()(
         set((s) => ({ answers: next, doneSections: withDone(s.doneSections, sectionId) }));
       },
 
-      goTo: (step) => set({ step: Math.max(0, Math.min(LAST_STEP, step)) }),
+      goTo: (step) => set({ step: Math.max(0, Math.min(OPEN_STEP, step)) }),
 
       finish: () => set({ completedAt: new Date().toISOString() }),
 
@@ -120,7 +152,21 @@ export const useCheck = create<CheckState>()(
 
       setContactSaved: () => set({ contactSaved: true }),
 
-      reset: () => set({ ...initial, profile: { ...EMPTY_PROFILE, goals: [] }, answers: {} }),
+      setOpen: (patch) => set((s) => ({ open: { ...s.open, ...patch } })),
+
+      addChatLine: (line) => set((s) => ({ open: { ...s.open, chat: [...s.open.chat, line] } })),
+
+      setOpenSignals: (signals) =>
+        set((s) => {
+          const answers = { ...s.answers };
+          if (signals.areas.length || signals.services.length) answers[OPEN_SIGNALS_ID] = openSignalsAnswer(signals);
+          else delete answers[OPEN_SIGNALS_ID];
+          return { answers };
+        }),
+
+      finishOpen: () => set({ openDone: true }),
+
+      reset: () => set({ ...initial, profile: { ...EMPTY_PROFILE, goals: [] }, answers: {}, open: { ...EMPTY_OPEN, chat: [] } }),
     }),
     {
       name: 'business-health-check:v1',
@@ -135,7 +181,14 @@ export const useCheck = create<CheckState>()(
         submissionId: s.submissionId,
         submissionToken: s.submissionToken,
         contactSaved: s.contactSaved,
+        open: s.open,
+        openDone: s.openDone,
       }),
+      // Saves from before the open step have no `open` yet.
+      merge: (saved, current) => {
+        const s = (saved ?? {}) as Partial<CheckState>;
+        return { ...current, ...s, open: { ...EMPTY_OPEN, ...(s.open ?? {}) }, openDone: !!s.openDone };
+      },
     },
   ),
 );
