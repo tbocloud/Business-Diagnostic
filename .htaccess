@@ -3,7 +3,9 @@
 # ─────────────────────────────────────────────────────────────
 Options -Indexes
 DirectoryIndex index.html index.php
-ErrorDocument 404 /404.html
+# Custom 404 page — the path must include the sub-folder the site lives in (here /Business_Diagnostic_TBO).
+# At the root of a domain this would be: ErrorDocument 404 /404.html
+ErrorDocument 404 /Business_Diagnostic_TBO/404.html
 
 # Source code, SQL and repo files are not part of the website.
 <IfModule mod_rewrite.c>

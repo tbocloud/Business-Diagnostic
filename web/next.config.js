@@ -8,6 +8,8 @@
 module.exports = {
   reactStrictMode: true,
   output: 'export',
+  // Sub-folder hosting, e.g. /Business_Diagnostic_TBO — set in web/.env.production.
+  basePath: (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/+$/, ''),
   // /check → /check/index.html works on Apache without rewrite rules.
   trailingSlash: true,
   images: { unoptimized: true },

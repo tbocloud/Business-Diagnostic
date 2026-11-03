@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { KeyRound, Loader2, UserPlus, Wand2 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { adminApi, ApiError, type Role, type TeamMemberFull } from '@/lib/api';
+import { siteUrl } from '@/lib/basePath';
 import { Button } from '@/components/ui/Button';
 import { useAdminUser } from './AdminShell';
 import { Card, ErrorText, FieldLabel, timeAgo } from './ui';
@@ -194,7 +195,7 @@ function AddMember({ onSave }: { onSave: (b: Parameters<typeof adminApi.saveTeam
           setBusy(true);
           const ok = await onSave(
             { action: 'create', ...form },
-            `${form.name} was added. Send them the panel link (${window.location.origin}/admin/), their email and this password: ${form.password}`,
+            `${form.name} was added. Send them the panel link (${siteUrl('/admin/')}), their email and this password: ${form.password}`,
           );
           setBusy(false);
           if (ok) setForm({ name: '', email: '', role: 'bde', password: '' });

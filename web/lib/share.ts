@@ -1,3 +1,4 @@
+import { siteUrl } from './basePath';
 import { normalizeReport } from './normalize';
 import type { Answers, Profile } from './types';
 
@@ -55,7 +56,7 @@ export function decodeResults(token: string): { profile: Profile; answers: Answe
 
 /** Full shareable URL for the results page. Call in the browser only. */
 export function shareUrl(profile: Profile, answers: Answers, completedAt?: string): string {
-  return `${window.location.origin}/results/#r=${encodeResults(profile, answers, completedAt)}`;
+  return siteUrl(`/results/#r=${encodeResults(profile, answers, completedAt)}`);
 }
 
 /** Read a shared token from the current URL hash, if any. Call in the browser only. */

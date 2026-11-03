@@ -56,7 +56,7 @@ When the CRM admin has sent the URL, API key and secret:
    define('CRM_URL',        'https://crm.yourcompany.com');
    define('CRM_API_KEY',    '…');
    define('CRM_API_SECRET', '…');
-   define('SITE_URL',       'https://<this website>');   // used to build the report links
+   define('SITE_URL',       'https://hrn.pxv.mybluehost.me/Business_Diagnostic_TBO');   // the site's address INCLUDING its sub-folder
    // define('CRM_DOCTYPE', 'Business Health Check');   // only if the DocType has another name
    ```
    - `api/config.php` is git-ignored, so the keys never go to GitHub.

@@ -5,7 +5,10 @@
 
 import type { Answers, Profile } from './types';
 
-const BASE = (process.env.NEXT_PUBLIC_API_BASE ?? '').replace(/\/$/, '');
+import { BASE_PATH } from './basePath';
+
+// The PHP API sits next to the site, inside the same (sub-)folder. NEXT_PUBLIC_API_BASE can point elsewhere in development.
+const BASE = (process.env.NEXT_PUBLIC_API_BASE ?? BASE_PATH).replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(

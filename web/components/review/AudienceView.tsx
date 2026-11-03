@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import { withBase } from '@/lib/basePath';
 import { MonitorUp, NotebookPen, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReportSource } from '@/components/results/useReportData';
@@ -64,7 +65,8 @@ export function AudienceView({
       popup.current.focus();
       return;
     }
-    const w = window.open(presenterUrl, 'bhc-presenter', 'popup=yes,width=1200,height=800');
+    // window.open isn't a Next.js link, so the sub-folder must be added by hand.
+    const w = window.open(withBase(presenterUrl), 'bhc-presenter', 'popup=yes,width=1200,height=800');
     popup.current = w;
     setBlocked(!w);
   };

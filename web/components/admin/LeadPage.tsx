@@ -21,6 +21,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { adminApi, ApiError, type LeadDetail, type LeadNote, type LeadStatus } from '@/lib/api';
 import { BRAND } from '@/lib/brand';
 import { computeResults } from '@/lib/engine';
+import { siteUrl } from '@/lib/basePath';
 import { normalizeReport } from '@/lib/normalize';
 import { encodeResults } from '@/lib/share';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -184,7 +185,7 @@ function LeadView({ data, onChange }: { data: LeadDetail; onChange: (d: LeadDeta
                   <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   Open report
                 </ButtonLink>
-                <CopyLink url={() => `${window.location.origin}/results/${hash}`} />
+                <CopyLink url={() => siteUrl(`/results/${hash}`)} />
               </Card>
               <ReportBody results={results} compact defaultExpanded />
             </>
