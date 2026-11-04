@@ -96,26 +96,10 @@ export const publicApi = {
 
 // ── "Anything else on your mind?" — the last, open step ─────
 
-export interface OpenReply {
-  /** The assistant's next message (a follow-up question, or its closing summary when `done`). */
-  reply: string;
-  /** The assistant has what it needs, or the message limit was reached: no more messages. */
-  done: boolean;
-  /** Messages the client can still send. */
-  left: number;
-  /** Which areas and services it touches (tags only), for the report. */
-  signals: OpenSignals;
-}
-
 export const openApi = {
-  /** Whether the chat is switched on (the server has an AI key), and its first message. */
-  status: () => call<{ chat: boolean; greeting: string; maxMessages: number }>('open-problems.php'),
-  /** One client message in the chat; the server keeps the conversation and answers with the next question. */
-  chat: (body: { submissionId: number; token: string; message: string }) =>
-    call<OpenReply>('open-problems.php', { body: { action: 'chat', ...body } }),
-  /** A typed note instead of the chat. Returns its tags for the report (empty when the AI is off). */
+  /** The client's note. Returns which areas and services it touches (tags only, for the report; empty when the AI is off). */
   note: (body: { submissionId: number; token: string; text: string }) =>
-    call<{ ok: true; signals: OpenSignals }>('open-problems.php', { body: { action: 'note', ...body } }),
+    call<{ ok: true; signals: OpenSignals }>('open-problems.php', { body }),
 };
 
 // ── Admin panel ─────────────────────────────────────────────

@@ -6,7 +6,7 @@
 #
 #  Usage:  ./dev/run-local.sh          then open http://localhost:8080
 #          MOCK_AI=1 ./dev/run-local.sh   also starts a fake AI (dev/mock-ai.php) so the last
-#                                        step's chat works without a real OpenAI key
+#                                        step's note summary works without a real OpenAI key
 #  Stop:   Ctrl+C  (the database keeps running; `docker stop bhc-local-db` to stop it)
 #  Reset:  docker rm -f bhc-local-db && docker volume rm bhc-local-data
 #
@@ -59,7 +59,7 @@ echo ' ready.'
 
 # Databases created before a newer db/*.sql file: apply what's missing (each file runs once).
 if ! docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic \
-     -e 'SELECT open_mode FROM submissions LIMIT 1' >/dev/null 2>&1; then
+     -e 'SELECT open_text FROM submissions LIMIT 1' >/dev/null 2>&1; then
   echo "Adding the last-step columns (db/003_open_problems.sql) to your local database…"
   docker exec -i bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic < db/003_open_problems.sql
 fi
@@ -88,9 +88,9 @@ echo
 echo "  Website:    http://localhost:$WEB_PORT$BASE_PATH/"
 echo "  BDE panel:  http://localhost:$WEB_PORT$BASE_PATH/admin/   (first time: setup code \"$SETUP_TOKEN\")"
 if [ -n "${OPENAI_API_KEY:-}" ]; then
-  echo "  Chat (last step): on — ${AI_BASE_URL:-https://api.openai.com/v1}"
+  echo "  Note summaries (last step): on — ${AI_BASE_URL:-https://api.openai.com/v1}"
 else
-  echo "  Chat (last step): off — MOCK_AI=1 for a fake one, or set OPENAI_API_KEY"
+  echo "  Note summaries (last step): off — MOCK_AI=1 for a fake AI, or set OPENAI_API_KEY"
 fi
 echo
 

@@ -30,7 +30,7 @@ export function buildRailItems(states: RailState[], currentStep: number, current
     {
       step: OPEN_STEP,
       title: 'Anything else?',
-      icon: 'MessagesSquare',
+      icon: 'PenLine',
       state: states[SECTIONS.length + 1],
       detail: currentStep === OPEN_STEP ? currentDetail : undefined,
     },

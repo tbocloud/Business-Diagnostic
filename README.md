@@ -137,11 +137,11 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 
 ## The last step: "Anything else on your mind?"
 
-After the eight areas, the client can describe other problems in their own words: **type a note**, or **talk it through** with a short chat that asks one question at a time (at most 8 messages). Their words go to the team only — the CRM record's **Problem Summary** (short points) and **Client's Own Words** (the note or the whole chat). The report never quotes them; it only uses which areas and services they touch, to rank the gaps and the services shown.
+After the eight areas, the client can write a note about other problems, in their own words (optional). The note goes to the team only — the CRM record's **Client's Own Words**, plus a **Problem Summary** of short points written by the AI. The report never quotes it; it only uses which areas and services it touches, to rank the gaps and the services shown.
 
 - Needs `db/003_open_problems.sql`.
-- The chat needs `OPENAI_API_KEY` in `api/config.php` (the same setting the old GPT site used; model `gpt-4o-mini`, change with `AI_MODEL`). Without a key the chat hides and typing a note still works.
-- Locally: `MOCK_AI=1 ./dev/run-local.sh` starts a fake AI (`dev/mock-ai.php`), so the chat works with no key and no cost.
+- The summary needs `OPENAI_API_KEY` in `api/config.php` (the same setting the old GPT site used; model `gpt-4o-mini`, change with `AI_MODEL`). Without a key the note is still saved and sent, without a summary.
+- Locally: `MOCK_AI=1 ./dev/run-local.sh` starts a fake AI (`dev/mock-ai.php`), so the summary works with no key and no cost.
 
 ## Changing the website
 
