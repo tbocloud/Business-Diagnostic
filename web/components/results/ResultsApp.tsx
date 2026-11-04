@@ -11,6 +11,7 @@ import { PageSkeleton } from '@/components/ui/Skeleton';
 import { ContactCapture } from './ContactCapture';
 import { ContactCta } from './ContactCta';
 import { EmptyState, emptyCopy, INVALID_LINK } from './EmptyState';
+import { NextChecks } from './NextChecks';
 import { ReportBody } from './ReportBody';
 import { ReportHeader } from './ReportHeader';
 import { useReportData } from './useReportData';
@@ -83,6 +84,7 @@ export function ResultsApp() {
         onGetHelp={!isShared ? scrollToCallback : undefined}
         footer={
           <>
+            {!isShared && <NextChecks />}
             <ContactCta businessName={results.businessName} />
             <p className="no-print border-t border-line pt-6 text-[13px] leading-relaxed text-muted">{FOOTNOTE}</p>
           </>

@@ -14,7 +14,7 @@ const root = join(web, '..');
 
 // Everything the export produces at the top level. Only these are replaced —
 // api/, db/, web/, .htaccess, README etc. are never touched.
-const GENERATED = ['_next', 'admin', 'check', 'results', '404', '404.html', 'index.html', 'index.txt', 'icon.svg'];
+const GENERATED = ['_next', 'admin', 'check', 'results', 'deep', 'erp', '404', '404.html', 'index.html', 'index.txt', 'icon.svg'];
 
 if (!existsSync(join(out, 'index.html'))) {
   console.error('web/out is missing — run `npm run build` first.');

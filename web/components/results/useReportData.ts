@@ -65,6 +65,8 @@ export function useReportData(): ReportData {
         .report(id, k)
         .then((d) => {
           if (mine !== current) return;
+          // A Stage 2 / ERP check link opened on the Stage 1 page: not this report.
+          if (d.kind && d.kind !== 'health') return setShared({ kind: 'invalid' });
           const report = normalizeReport(d.profile, d.answers);
           if (!report) return setShared({ kind: 'invalid' });
           const completedAt = d.completedAt ?? undefined;

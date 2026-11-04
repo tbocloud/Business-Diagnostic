@@ -57,12 +57,16 @@ until docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal -e 'SELECT 1 F
 done
 echo ' ready.'
 
-# Databases created before a newer db/*.sql file: apply what's missing (each file runs once).
-if ! docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic \
-     -e 'SELECT open_voice FROM submissions LIMIT 1' >/dev/null 2>&1; then
-  echo "Adding the last-step columns (db/003_open_problems.sql) to your local database…"
-  docker exec -i bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic < db/003_open_problems.sql
-fi
+# Databases created before a newer db/*.sql file: apply what's missing (each file runs once),
+# found by a column the file adds.
+for migration in "003_open_problems.sql:open_voice" "004_more_checks.sql:check_type"; do
+  file="${migration%%:*}"; column="${migration##*:}"
+  if ! docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic \
+       -e "SELECT $column FROM submissions LIMIT 1" >/dev/null 2>&1; then
+    echo "Applying db/$file to your local database…"
+    docker exec -i bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic < "db/$file"
+  fi
+done
 
 if [ "${MOCK_AI:-}" = "1" ]; then
   AI_PORT="${AI_PORT:-8098}"
