@@ -97,6 +97,8 @@ export interface FormState {
   completedAt?: string;
   submissionId?: number;
   submissionToken?: string;
+  /** "Call me back" was sent from the report. */
+  contactSaved?: boolean;
   setAnswer: (id: string, a: Answer) => void;
   skip: (id: string) => void;
   clear: (id: string) => void;
@@ -107,6 +109,7 @@ export interface FormState {
   markDone: (step: number) => void;
   finish: () => void;
   setSubmission: (id: number, token: string) => void;
+  setContactSaved: () => void;
   reset: () => void;
 }
 
@@ -120,6 +123,7 @@ const initial = {
   completedAt: undefined as string | undefined,
   submissionId: undefined as number | undefined,
   submissionToken: undefined as string | undefined,
+  contactSaved: false,
 };
 
 /** One persisted store per check, so Stage 2 and the ERP check keep their own progress. */
@@ -143,6 +147,7 @@ export function createFormStore(key: CheckKind) {
         markDone: (step) => set((s) => ({ doneSteps: s.doneSteps.includes(step) ? s.doneSteps : [...s.doneSteps, step] })),
         finish: () => set({ completedAt: new Date().toISOString() }),
         setSubmission: (submissionId, submissionToken) => set({ submissionId, submissionToken }),
+        setContactSaved: () => set({ contactSaved: true }),
         reset: () => set({ ...initial, details: { ...EMPTY_DETAILS }, answers: {} }),
       }),
       {

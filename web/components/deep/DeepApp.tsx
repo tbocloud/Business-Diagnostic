@@ -11,7 +11,7 @@ export function DeepApp() {
   const stage1 = useCheck((s) => s.answers);
   const profile = useCheck((s) => s.profile);
   const points = () => computeDeep(useDeep.getState().answers, stage1, profile.industry).points;
-  const toSave = () => withStage1(useDeep.getState().answers, stage1);
+  const toSave = () => withStage1(useDeep.getState().answers, stage1, profile.industry);
   return (
     <FormRunner
       sections={DEEP_SECTIONS}

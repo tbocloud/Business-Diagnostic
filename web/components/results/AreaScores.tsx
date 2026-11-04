@@ -133,10 +133,12 @@ export function AreaScores({
   target,
   levelLabel,
   onOpenArea,
+  targetLabel = 'Target for your stage',
 }: {
   sections: SectionResult[];
   target: number;
   levelLabel: string;
+  targetLabel?: string;
   /** Adds a "What to do" button to each area, opening its next steps. */
   onOpenArea?: (id: SectionId) => void;
 }) {
@@ -170,7 +172,7 @@ export function AreaScores({
             </li>
             <li className="inline-flex items-center gap-2">
               <span aria-hidden="true" className="h-4 w-[2.5px] rounded-full bg-ink" />
-              Target for your stage ({target})
+              {targetLabel} ({target})
             </li>
           </ul>
           <button

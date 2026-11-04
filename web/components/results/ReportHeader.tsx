@@ -17,6 +17,10 @@ interface ReportHeaderProps {
   getShareUrl: () => string;
   onEdit: () => void;
   onReset: () => void;
+  /** Which report, e.g. "ERP check" (default: "Report"). */
+  eyebrow?: string;
+  /** Chips under the name instead of industry / stage / team / goals. */
+  chips?: { label: string; value: string }[];
 }
 
 function Chip({ label, value }: { label: string; value: string }) {
@@ -37,6 +41,8 @@ export function ReportHeader({
   getShareUrl,
   onEdit,
   onReset,
+  eyebrow,
+  chips,
 }: ReportHeaderProps) {
   const [copied, setCopied] = useState<'idle' | 'copied' | 'manual'>('idle');
   const [manualUrl, setManualUrl] = useState('');
@@ -67,7 +73,7 @@ export function ReportHeader({
     <header className="print-avoid-break">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="eyebrow">
-          <span className="text-brand">{BRAND.product}</span> · Report
+          <span className="text-brand">{BRAND.product}</span> · {eyebrow ?? 'Report'}
         </p>
         <span className="text-[13px] text-muted">{formatDate(completedAt)}</span>
       </div>
@@ -81,11 +87,17 @@ export function ReportHeader({
       )}
 
       <ul className="mt-5 flex flex-wrap gap-2" aria-label="About this business">
-        {/* Skipped details are left out rather than shown as "Not specified". */}
-        {results.industryLabel !== NOT_SPECIFIED && <Chip label="Industry" value={results.industryLabel} />}
-        {results.levelLabel !== NOT_SPECIFIED && <Chip label="Stage" value={results.levelLabel} />}
-        {results.teamLabel !== NOT_SPECIFIED && <Chip label="Team" value={results.teamLabel} />}
-        {goals.length > 0 && <Chip label={goals.length === 1 ? 'Goal' : 'Goals'} value={goals.join(' · ')} />}
+        {chips ? (
+          chips.map((c) => <Chip key={c.label} label={c.label} value={c.value} />)
+        ) : (
+          <>
+            {/* Skipped details are left out rather than shown as "Not specified". */}
+            {results.industryLabel !== NOT_SPECIFIED && <Chip label="Industry" value={results.industryLabel} />}
+            {results.levelLabel !== NOT_SPECIFIED && <Chip label="Stage" value={results.levelLabel} />}
+            {results.teamLabel !== NOT_SPECIFIED && <Chip label="Team" value={results.teamLabel} />}
+            {goals.length > 0 && <Chip label={goals.length === 1 ? 'Goal' : 'Goals'} value={goals.join(' · ')} />}
+          </>
+        )}
       </ul>
 
       <div className="no-print mt-6 flex flex-wrap items-center gap-2 border-t border-line pt-5">

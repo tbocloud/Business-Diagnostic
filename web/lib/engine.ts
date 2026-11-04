@@ -133,8 +133,9 @@ function sectionNote(r: Omit<SectionResult, 'note'>): string {
     : 'This area is well below where it should be for your stage.';
 }
 
+/** "Stock in the books…" → "stock in the books…"; "GST returns…" stays as it is. */
 function lower(s: string) {
-  return s ? s[0].toLowerCase() + s.slice(1) : s;
+  return s && !/^[A-Z]{2}/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
 }
 
 export function scoreSection(id: SectionId, ctx: Ctx): SectionResult {

@@ -5,8 +5,9 @@ import type { Insight, Results, SectionId } from '@/lib/types';
 import { EFFORT_META } from './labels';
 import { SectionHeader } from './SectionHeader';
 
-export function AreaTag({ id }: { id: SectionId }) {
-  const s = SECTION_BY_ID[id];
+/** The area's name and icon — a Stage 1 section, or (Stage 2, the ERP check) the title and icon given. */
+export function AreaTag({ id, title, icon }: { id: SectionId; title?: string; icon?: string }) {
+  const s = SECTION_BY_ID[id] ?? { title: title ?? '', icon: icon ?? 'CircleDot' };
   return (
     <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-muted">
       <Icon name={s.icon} className="h-3.5 w-3.5" />
@@ -37,7 +38,7 @@ function StrengthItem({ i }: { i: Insight }) {
           You said: <span className="text-ink">{i.answerLabel}</span>
         </p>
         <p className="mt-2">
-          <AreaTag id={i.section} />
+          <AreaTag id={i.section} title={i.sectionTitle} icon={i.sectionIcon} />
         </p>
       </div>
     </li>
@@ -69,7 +70,7 @@ function GapItem({ i, n }: { i: Insight; n: number }) {
             </p>
           </div>
           <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2">
-            <AreaTag id={i.section} />
+            <AreaTag id={i.section} title={i.sectionTitle} icon={i.sectionIcon} />
             <EffortBadge effort={i.effort} />
           </div>
         </div>
