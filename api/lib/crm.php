@@ -148,11 +148,17 @@ function crm_problem_summary(array $row): ?string {
     return $lines ? implode("\n", $lines) : null;
 }
 
-/** The client's note from the last step, in their own words (or what their voice note said). Plain text, or null. */
+/**
+ * What the client told us in the last step, as plain text: their typed note, and what their
+ * voice note says (written down by the AI — the recording itself is the voice_note attachment).
+ */
 function crm_client_note(array $row): ?string {
-    $text = trim(strip_tags((string) ($row['open_text'] ?? '')));
-    // They recorded a voice note but never sent the note itself: what the recording said.
-    if ($text === '' && !empty($row['open_transcript'])) $text = 'Voice note: ' . trim(strip_tags((string) $row['open_transcript']));
+    $parts = [];
+    $typed = trim(strip_tags((string) ($row['open_text'] ?? '')));
+    if ($typed !== '') $parts[] = $typed;
+    $heard = trim(strip_tags((string) ($row['open_transcript'] ?? '')));
+    if ($heard !== '') $parts[] = "Voice note (written down by AI — listen to the recording to be sure):\n" . $heard;
+    $text = implode("\n\n", $parts);
     if ($text === '') return null;
     return function_exists('mb_substr') ? mb_substr($text, 0, 20000) : substr($text, 0, 20000);
 }

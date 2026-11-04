@@ -14,10 +14,10 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * Last, optional step: "Anything else on your mind?" The client types a note in their own
- * words and/or records a voice note (written down into the note when the AI is on). Both go
- * to our team (CRM: a short summary, their words, the recording); the report only uses the
- * tags (which areas and services it touches) — it never quotes them.
+ * Last, optional step: "Anything else on your mind?" The client types a note or records a voice
+ * note — whichever is easier (or both). It all goes to our team (CRM: a short summary of both,
+ * their words, the recording); the report only uses the tags (which areas and services it
+ * touches) — it never quotes them.
  */
 export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode; onBack: () => void; onDone: () => void }) {
   const id = useId();
@@ -57,7 +57,7 @@ export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode;
         numeral="09"
         icon="PenLine"
         title="Anything else on your mind?"
-        intro="Is something in your business bothering you that we didn’t ask about? Tell us in your own words — type it, or record a voice note. It helps shape your report, and our team reads it so they understand your business properly."
+        intro="Is something in your business bothering you that we didn’t ask about? Tell us in your own words — type it, or record a voice note, whichever is easier. It helps shape your report, and our team goes through it so they understand your business properly."
         questionCount={1}
         minutes={2}
         skipLabel="Skip this step"
@@ -86,13 +86,7 @@ export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode;
         <p className="mt-1.5 text-right text-[12px] text-muted" aria-live="polite">
           {text.length.toLocaleString('en-IN')} / {NOTE_MAX.toLocaleString('en-IN')}
         </p>
-        <VoiceRecorder
-          onTranscript={(heard) => {
-            // What the voice note said goes into the note, where the client can correct it.
-            const current = useCheck.getState().open.text.trim();
-            setOpen({ text: (current ? `${current}\n\n${heard}` : heard).slice(0, NOTE_MAX) });
-          }}
-        />
+        <VoiceRecorder />
       </section>
 
       <FormFooter
