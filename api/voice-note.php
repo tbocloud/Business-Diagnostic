@@ -30,7 +30,7 @@ const VOICE_TYPES = [
 
 run(function () {
     require_method('POST');
-    rate_limit('voice', 12, 3600);
+    rate_limit('voice', 30, 3600); // re-recording a few times, or an office sharing one network
 
     $id    = id_from($_POST['submissionId'] ?? null);
     $token = is_string($_POST['token'] ?? null) ? $_POST['token'] : '';
