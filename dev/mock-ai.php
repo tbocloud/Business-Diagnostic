@@ -21,10 +21,11 @@ $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') $send(404, ['error' => ['message' => 'Only POST is mocked']]);
 if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== 'Bearer mock-key') $send(401, ['error' => ['message' => 'Incorrect API key']]);
 
-// Speech to text: a canned transcript (it doesn't listen), so the voice-note flow can be tried.
+// Speech to text: it doesn't listen, so it says so — the text must never be mistaken for the client's words.
 if (str_ends_with($path, '/audio/transcriptions')) {
     if (empty($_FILES['file']['tmp_name'])) $send(400, ['error' => ['message' => 'No audio file']]);
-    $send(200, ['text' => 'Our dealers pay 60 days late and I chase them every Saturday. About 3 lakh is always stuck.']);
+    $kb = round(filesize($_FILES['file']['tmp_name']) / 1024);
+    $send(200, ['text' => "[Local test transcript — the fake AI can't hear your recording ({$kb} KB received). With a real OPENAI_API_KEY, your own words appear here.]"]);
 }
 if (!str_ends_with($path, '/chat/completions')) $send(404, ['error' => ['message' => 'Not mocked: ' . $path]]);
 
