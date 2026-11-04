@@ -1,6 +1,9 @@
 # PHP credentials — NEVER push this
 api/config.php
 
+# Clients' voice notes waiting for the CRM — private, never in git
+api/uploads/voice/
+
 # Mac system files
 .DS_Store
 

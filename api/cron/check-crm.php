@@ -15,7 +15,7 @@ require_once __DIR__ . '/../lib/ai.php';
 
 const FIELDS = ['business_name', 'contact_name', 'phone', 'email', 'report_link'];
 // Filled by the last step ("Anything else on your mind?"). Optional: without them the rest still syncs.
-const OPEN_FIELDS = ['problem_summary', 'client_note'];
+const OPEN_FIELDS = ['problem_summary', 'client_note', 'voice_note'];
 $failed = false;
 $ok   = function (string $m) { echo "  ✓ $m\n"; };
 $bad  = function (string $m, string $hint) use (&$failed) { $failed = true; echo "  ✗ $m\n    → $hint\n"; };
@@ -53,7 +53,7 @@ if (!$failed) {
         crm_request('GET', '/api/resource/' . rawurlencode(CRM_DOCTYPE) . '?fields=' . rawurlencode(json_encode(OPEN_FIELDS)) . '&limit_page_length=1');
         $ok('DocType also has ' . implode(' and ', OPEN_FIELDS) . ' (the client\'s note about other problems)');
     } catch (Throwable $e) {
-        $warn('DocType has no ' . implode(' / ', OPEN_FIELDS) . ' fields yet', 'Everything else still syncs. Ask the CRM admin to add them (Text / Long Text) to see the client\'s note.');
+        $warn('DocType has no ' . implode(' / ', OPEN_FIELDS) . ' fields yet', 'Everything else still syncs. Ask the CRM admin to add them (Text / Long Text / Attach) to see the client\'s note and voice note.');
     }
 }
 
@@ -85,15 +85,34 @@ try {
     $bad('Database is missing the CRM columns', 'Run db/002_crm_link.sql once in phpMyAdmin.');
 }
 try {
-    db()->query('SELECT open_text, open_summary, open_updated_at FROM submissions LIMIT 1');
+    db()->query('SELECT open_text, open_summary, open_voice, open_voice_seconds, open_voice_url, open_transcript, open_updated_at FROM submissions LIMIT 1');
     $ok('Database has the last-step columns (db/003_open_problems.sql)');
 } catch (Throwable $e) {
     $bad('Database is missing the last-step columns', 'Run db/003_open_problems.sql once in phpMyAdmin.');
 }
 
 // 5. The AI summary of the client's note
-if (ai_enabled()) $ok('Note summaries are on (OPENAI_API_KEY set, model ' . AI_MODEL . ')');
-else $warn('Note summaries are off — no OPENAI_API_KEY', 'The note still reaches the CRM, without the short summary. Add OPENAI_API_KEY to api/config.php to switch it on.');
+if (ai_enabled()) $ok('Note summaries and voice transcripts are on (OPENAI_API_KEY set, models ' . AI_MODEL . ' / ' . AI_TRANSCRIBE_MODEL . ')');
+else $warn('Note summaries and voice transcripts are off — no OPENAI_API_KEY', 'Notes and recordings still reach the CRM, without a summary or transcript. Add OPENAI_API_KEY to api/config.php to switch them on.');
+$voiceDir = voice_dir();
+if (!is_dir($voiceDir) && !@mkdir($voiceDir, 0750, true)) $bad('Cannot create ' . $voiceDir, 'Voice notes are stored there until they reach the CRM — check the folder permissions.');
+elseif (!is_writable($voiceDir)) $bad($voiceDir . ' is not writable', 'Voice notes are stored there until they reach the CRM — check the folder permissions.');
+else $ok('Voice notes can be stored (api/uploads/voice)');
+// A 3-minute recording is under 1 MB from Chrome, up to ~3 MB from Safari. (Web requests can have
+// lower limits than this command line; check them in cPanel → MultiPHP INI Editor if unsure.)
+$bytes = function (string $v): int {
+    $n = (int) $v;
+    $unit = strtolower(substr(trim($v), -1));
+    return $unit === 'g' ? $n << 30 : ($unit === 'm' ? $n << 20 : ($unit === 'k' ? $n << 10 : $n));
+};
+$limit = min($bytes((string) ini_get('upload_max_filesize')), $bytes((string) ini_get('post_max_size')));
+if ($limit > 0 && $limit < 4 << 20) $warn('PHP allows uploads of only ' . round($limit / 1048576, 1) . ' MB', 'Long voice notes from iPhones may not fit. Raise upload_max_filesize and post_max_size to 8M in cPanel → MultiPHP INI Editor.');
+try {
+    $waiting = (int) db()->query("SELECT COUNT(*) FROM submissions WHERE open_voice IS NOT NULL AND open_voice_url IS NULL")->fetchColumn();
+    if ($waiting) echo "  · $waiting voice note(s) waiting to be attached to the CRM\n";
+} catch (Throwable $e) {
+    // No db/003 yet — already reported above.
+}
 
 echo $failed ? "\nNot ready yet — fix the ✗ items above and run this again.\n" : "\nAll good — the CRM connection is ready.\n";
 exit($failed ? 1 : 0);

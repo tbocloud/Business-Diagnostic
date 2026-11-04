@@ -5,8 +5,9 @@
 //  Every finished health check becomes ONE record in the CRM DocType
 //  (default "Business Health Check") with basic client info and the
 //  link to their report. The same record is updated when the client
-//  later leaves a phone number / email, or writes a note about other
-//  problems in the last step (problem summary + their own words).
+//  later leaves a phone number / email, or writes a note or records a
+//  voice note about other problems in the last step (problem summary,
+//  their own words, and the recording as an attachment).
 //
 //  Switched off while CRM_URL / CRM_API_KEY / CRM_API_SECRET are empty.
 //  Setup steps for the CRM side: docs/crm-setup.md
@@ -102,6 +103,8 @@ function crm_sync_submission(int $id): void {
             // The last step ("Anything else on your mind?"). A CRM without these fields simply ignores them.
             'problem_summary' => crm_problem_summary($row),
             'client_note'     => crm_client_note($row),
+            // Set once the recording is attached (below); empty again when the client removed it.
+            'voice_note'      => ($row['open_voice'] ?? null) ? ($row['open_voice_url'] ?? null) : null,
         ];
 
         $doctype = rawurlencode(CRM_DOCTYPE);
@@ -112,6 +115,12 @@ function crm_sync_submission(int $id): void {
             $res = crm_request('POST', "/api/resource/$doctype", $fields);
             $ref = $res['data']['name'] ?? null;
             if (!is_string($ref) || $ref === '') throw new RuntimeException('CRM did not return the new record name');
+        }
+        // A voice note not attached yet: attach it to the record (which fills voice_note), then drop our copy.
+        if (!empty($row['open_voice']) && empty($row['open_voice_url']) && is_file(voice_dir() . '/' . basename($row['open_voice']))) {
+            $url = crm_upload_voice($ref, voice_dir() . '/' . basename($row['open_voice']));
+            db()->prepare('UPDATE submissions SET open_voice_url = ? WHERE id = ?')->execute([$url, $id]);
+            voice_delete_file($row['open_voice']);
         }
         db()->prepare('UPDATE submissions SET crm_ref = ?, crm_synced_at = NOW(), crm_error = NULL WHERE id = ?')->execute([$ref, $id]);
     } catch (Throwable $e) {
@@ -139,9 +148,60 @@ function crm_problem_summary(array $row): ?string {
     return $lines ? implode("\n", $lines) : null;
 }
 
-/** The client's note from the last step, in their own words. Plain text, or null. */
+/** The client's note from the last step, in their own words (or what their voice note said). Plain text, or null. */
 function crm_client_note(array $row): ?string {
     $text = trim(strip_tags((string) ($row['open_text'] ?? '')));
+    // They recorded a voice note but never sent the note itself: what the recording said.
+    if ($text === '' && !empty($row['open_transcript'])) $text = 'Voice note: ' . trim(strip_tags((string) $row['open_transcript']));
     if ($text === '') return null;
     return function_exists('mb_substr') ? mb_substr($text, 0, 20000) : substr($text, 0, 20000);
+}
+
+// ── Voice notes ──────────────────────────────────────────────
+
+/** Where voice notes wait until they are attached to the CRM record (blocked from the web by .htaccess). */
+function voice_dir(): string {
+    return dirname(__DIR__) . '/uploads/voice';
+}
+
+function voice_delete_file(?string $name): void {
+    if ($name === null || $name === '') return;
+    $path = voice_dir() . '/' . basename($name);
+    if (is_file($path)) @unlink($path);
+}
+
+/**
+ * Attach a recording to the CRM record as a private file, through the DocType's own
+ * attach_voice_note method (Frappe's upload_file refuses audio from an API user without desk
+ * access). Returns the file's URL in the CRM.
+ */
+function crm_upload_voice(string $ref, string $path): string {
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $mime = ['webm' => 'audio/webm', 'ogg' => 'audio/ogg', 'm4a' => 'audio/mp4', 'mp3' => 'audio/mpeg', 'wav' => 'audio/wav'][$ext] ?? 'application/octet-stream';
+    $ch = curl_init(rtrim(CRM_URL, '/') . '/api/method/run_doc_method');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_HTTPHEADER     => ['Authorization: token ' . CRM_API_KEY . ':' . CRM_API_SECRET, 'Accept: application/json'],
+        CURLOPT_POSTFIELDS     => [
+            'dt'     => CRM_DOCTYPE,
+            'dn'     => $ref,
+            'method' => 'attach_voice_note',
+            'file'   => new CURLFile($path, $mime, "voice-note-$ref.$ext"),
+        ],
+    ]);
+    $raw = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    unset($ch);
+    if ($raw === false) throw new RuntimeException('CRM not reachable for the voice note: ' . $error);
+    $data = json_decode((string) $raw, true);
+    $url = is_array($data) ? ($data['message']['file_url'] ?? null) : null;
+    if ($status < 200 || $status >= 300 || !is_string($url) || $url === '') {
+        $reason = is_array($data) ? ($data['exception'] ?? $data['exc_type'] ?? '') : '';
+        throw new RuntimeException("CRM refused the voice note ($status)" . ($reason !== '' ? ': ' . substr((string) $reason, 0, 160) : ''));
+    }
+    return $url;
 }

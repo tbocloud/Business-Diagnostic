@@ -40,6 +40,10 @@ async function call<T>(path: string, init?: { method?: 'GET' | 'POST'; body?: un
   } catch {
     throw new ApiError('Can’t reach the server. Check your connection and try again.', 0);
   }
+  return readResponse<T>(res);
+}
+
+async function readResponse<T>(res: Response): Promise<T> {
   let data: unknown = null;
   try {
     data = await res.json();
@@ -51,6 +55,17 @@ async function call<T>(path: string, init?: { method?: 'GET' | 'POST'; body?: un
     throw new ApiError(msg, res.status);
   }
   return data as T;
+}
+
+/** A multipart POST (file uploads). The token in the form proves the check-up is the caller's. */
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/${path}`, { method: 'POST', credentials: 'same-origin', body: form, cache: 'no-store' });
+  } catch {
+    throw new ApiError('Can’t reach the server. Check your connection and try again.', 0);
+  }
+  return readResponse<T>(res);
 }
 
 // ── Public (client side of the check) ───────────────────────
@@ -100,6 +115,22 @@ export const openApi = {
   /** The client's note. Returns which areas and services it touches (tags only, for the report; empty when the AI is off). */
   note: (body: { submissionId: number; token: string; text: string }) =>
     call<{ ok: true; signals: OpenSignals }>('open-problems.php', { body }),
+  /** A voice note (replaces an earlier one). Returns what it says when the AI is on, else null. */
+  voice: (args: { submissionId: number; token: string; audio: Blob; fileName: string; seconds: number }) => {
+    const form = new FormData();
+    form.set('submissionId', String(args.submissionId));
+    form.set('token', args.token);
+    form.set('seconds', String(Math.round(args.seconds)));
+    form.set('audio', args.audio, args.fileName);
+    return upload<{ ok: true; transcript: string | null }>('voice-note.php', form);
+  },
+  removeVoice: (args: { submissionId: number; token: string }) => {
+    const form = new FormData();
+    form.set('submissionId', String(args.submissionId));
+    form.set('token', args.token);
+    form.set('remove', '1');
+    return upload<{ ok: true }>('voice-note.php', form);
+  },
 };
 
 // ── Admin panel ─────────────────────────────────────────────

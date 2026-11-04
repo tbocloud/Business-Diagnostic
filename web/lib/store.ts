@@ -15,10 +15,12 @@ export const PROFILE_STEP = 0;
 export const LAST_STEP = SECTIONS.length;
 export const OPEN_STEP = LAST_STEP + 1;
 
-/** The last, open step. The note goes to the team (CRM) — never into the report. */
+/** The last, open step. The note and voice note go to the team (CRM) — never into the report. */
 export interface OpenNote {
   /** Their note, in their own words. */
   text: string;
+  /** A voice note saved on the server (the recording itself isn't kept in the browser). */
+  voice?: { seconds: number };
 }
 
 const EMPTY_OPEN: OpenNote = { text: '' };
@@ -173,7 +175,9 @@ export const useCheck = create<CheckState>()(
       // Saves from before the open step have no `open` yet.
       merge: (saved, current) => {
         const s = (saved ?? {}) as Partial<CheckState>;
-        return { ...current, ...s, open: { text: typeof s.open?.text === 'string' ? s.open.text : '' }, openDone: !!s.openDone };
+        const open: OpenNote = { text: typeof s.open?.text === 'string' ? s.open.text : '' };
+        if (typeof s.open?.voice?.seconds === 'number') open.voice = { seconds: s.open.voice.seconds };
+        return { ...current, ...s, open, openDone: !!s.openDone };
       },
     },
   ),

@@ -62,3 +62,37 @@ function ai_json(array $messages, string $schemaName, array $schema, int $maxTok
     if (!is_array($out)) throw new RuntimeException('AI answer was not valid JSON');
     return $out;
 }
+
+/**
+ * Speech to text for the client's voice note (any language they speak). Returns the
+ * transcript, or throws with a short reason.
+ */
+function ai_transcribe(string $path, string $mime): string {
+    $ch = curl_init(rtrim(AI_BASE_URL, '/') . '/audio/transcriptions');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . OPENAI_API_KEY],
+        CURLOPT_POSTFIELDS     => [
+            'model'           => AI_TRANSCRIBE_MODEL,
+            'response_format' => 'json',
+            'file'            => new CURLFile($path, $mime, basename($path)),
+        ],
+    ]);
+    $raw = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    unset($ch);
+
+    if ($raw === false) throw new RuntimeException('AI not reachable: ' . $error);
+    $data = json_decode((string) $raw, true);
+    if ($status < 200 || $status >= 300) {
+        $reason = is_array($data) ? (string) ($data['error']['message'] ?? '') : '';
+        throw new RuntimeException("AI said $status" . ($reason !== '' ? ': ' . substr($reason, 0, 160) : ''));
+    }
+    $text = is_array($data) ? trim((string) ($data['text'] ?? '')) : '';
+    if ($text === '') throw new RuntimeException('AI heard nothing in the recording');
+    return $text;
+}
