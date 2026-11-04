@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { FormRunner } from '@/components/forms/FormRunner';
-import { syncCheck } from '@/lib/checks';
+import { ensureCheck, syncCheck } from '@/lib/checks';
 import { computeErp, ERP_SECTIONS } from '@/lib/erp';
 import { useErp } from '@/lib/forms';
 import { useCheck } from '@/lib/store';
@@ -13,11 +13,12 @@ export function ErpApp() {
   const profile = useCheck((s) => s.profile);
   // Fill the contact step from Stage 1 on this device, when it's still empty.
   useEffect(() => {
-    const { profile } = useCheck.getState();
+    const { profile: p } = useCheck.getState();
     const { details, setDetails } = useErp.getState();
-    if (!details.businessName && profile.businessName) setDetails({ businessName: profile.businessName });
-    if (!details.ownerName && profile.ownerName) setDetails({ ownerName: profile.ownerName });
+    if (!details.businessName && p.businessName) setDetails({ businessName: p.businessName });
+    if (!details.ownerName && p.ownerName) setDetails({ ownerName: p.ownerName });
   }, []);
+  const points = () => computeErp(useErp.getState().answers, profile).points;
   return (
     <FormRunner
       sections={ERP_SECTIONS}
@@ -25,10 +26,16 @@ export function ErpApp() {
       stage1={stage1}
       profile={profile}
       eyebrow="ERP check"
+      note={{
+        title: 'Anything else about your system?',
+        intro: 'Something your software can’t do, a report you wish you had, a job you do by hand every day? Type it, or record a voice note — we will show you how ERPNext handles it.',
+        example: 'We bill from Tally but stock is in Excel, and the two never match at month-end.',
+      }}
+      ensureSaved={() => ensureCheck('erp', useErp, points)}
       details={{ title: 'Where should we send your ERP plan?', intro: 'Your business and how to reach you — so the plan in your report goes to the right person.' }}
       resultsHref="/erp/results"
       onSubmit={async () => {
-        await syncCheck('erp', useErp, computeErp(useErp.getState().answers, profile).points);
+        await syncCheck('erp', useErp, points());
       }}
     />
   );

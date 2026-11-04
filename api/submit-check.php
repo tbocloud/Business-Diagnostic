@@ -4,7 +4,8 @@
 //  and re-saves it when the client changes their answers.
 //
 //  Body: { kind: 'deep'|'erp', submissionId?, token?, parentId?, parentToken?,
-//          details: { businessName, ownerName, phone, email }, answers, summary: { points } }
+//          details: { businessName, ownerName, phone, email }, answers, summary: { points },
+//          openText? }   — openText: the note from the last step (a fallback; open-problems.php saves it first)
 //  → { submissionId, token }
 //
 //  parentId/parentToken: the client's Stage 1 check on this device, so the new check joins
@@ -15,6 +16,7 @@
 
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/lib/crm.php';
+require_once __DIR__ . '/lib/open.php';
 
 const CHECK_KINDS = ['deep' => 'Stage 2 (your numbers)', 'erp' => 'ERP check'];
 
@@ -35,6 +37,7 @@ run(function () {
     if ($phone !== null && !preg_match('/^\+?[0-9 ()\-]{6,30}$/', $phone)) fail('That phone number doesn’t look right');
     if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) fail('That email doesn’t look right');
 
+    $openText = str_or_null($body['openText'] ?? null, 3000);
     $points = [];
     $summary = is_array($body['summary'] ?? null) ? $body['summary'] : [];
     foreach (array_slice(is_array($summary['points'] ?? null) ? $summary['points'] : [], 0, 8) as $p) {
@@ -80,6 +83,7 @@ run(function () {
             $sets = implode(', ', array_map(fn($c) => "$c = ?", array_keys($values)));
             $pdo->prepare("UPDATE submissions SET $sets WHERE id = ?")->execute([...array_values($values), $id]);
             add_activity($id, null, 'system', CHECK_KINDS[$kind] . ' updated by the client.');
+            save_open_text($id, $openText);
             respond_then(['submissionId' => $id, 'token' => $token], 200, fn() => crm_sync_submission($id));
         }
         // Unknown id or wrong token → fall through and save as a new check.
@@ -97,6 +101,7 @@ run(function () {
     $pdo->prepare("INSERT INTO submissions ($cols) VALUES ($marks)")->execute(array_values($values));
     $newId = (int) $pdo->lastInsertId();
     add_activity($newId, null, 'system', CHECK_KINDS[$kind] . ' submitted.');
+    save_open_text($newId, $openText);
 
     respond_then(['submissionId' => $newId, 'token' => $token], 201, fn() => crm_sync_submission($newId));
 });

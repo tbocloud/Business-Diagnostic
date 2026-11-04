@@ -27,8 +27,8 @@ export interface FormField {
   text: string;
   hint?: string;
   kind: 'number' | 'single' | 'multi';
-  /** Number fields. */
-  number?: { min: number; max: number; step?: number; prefix?: string; unit: string; placeholder?: string };
+  /** Number fields. `score`: 0–100 for a figure (scored questions); leave out for neutral ones. */
+  number?: { min: number; max: number; step?: number; prefix?: string; unit: string; placeholder?: string; score?: (n: number) => number };
   /** Choices; for number fields, quick alternatives such as "Not sure". */
   options?: FormOption[];
   maxPicks?: number;
@@ -50,6 +50,8 @@ export interface FormField {
     module: string;
     /** Rough hours a month the gap takes, by option id (for "time this costs you"). */
     hours?: Record<string, number>;
+    /** Number questions asked in hours a month: the figure itself is the time it takes. */
+    hoursFromValue?: boolean;
   };
 }
 
@@ -87,6 +89,9 @@ export const EMPTY_DETAILS: FormDetails = { businessName: '', ownerName: '', pho
 export interface FormState {
   answers: FormAnswers;
   details: FormDetails;
+  /** The last step ("Anything else on your mind?"): their note, and a voice note saved on the server. */
+  openText: string;
+  openVoice?: { seconds: number };
   step: number;
   doneSteps: number[];
   completedAt?: string;
@@ -96,6 +101,8 @@ export interface FormState {
   skip: (id: string) => void;
   clear: (id: string) => void;
   setDetails: (patch: Partial<FormDetails>) => void;
+  setOpenText: (text: string) => void;
+  setOpenVoice: (voice: { seconds: number } | undefined) => void;
   goTo: (step: number) => void;
   markDone: (step: number) => void;
   finish: () => void;
@@ -106,6 +113,8 @@ export interface FormState {
 const initial = {
   answers: {} as FormAnswers,
   details: EMPTY_DETAILS,
+  openText: '',
+  openVoice: undefined as { seconds: number } | undefined,
   step: 0,
   doneSteps: [] as number[],
   completedAt: undefined as string | undefined,
@@ -128,13 +137,19 @@ export function createFormStore(key: CheckKind) {
             return { answers };
           }),
         setDetails: (patch) => set((s) => ({ details: { ...s.details, ...patch } })),
+        setOpenText: (openText) => set({ openText }),
+        setOpenVoice: (openVoice) => set({ openVoice }),
         goTo: (step) => set({ step: Math.max(0, step) }),
         markDone: (step) => set((s) => ({ doneSteps: s.doneSteps.includes(step) ? s.doneSteps : [...s.doneSteps, step] })),
         finish: () => set({ completedAt: new Date().toISOString() }),
         setSubmission: (submissionId, submissionToken) => set({ submissionId, submissionToken }),
         reset: () => set({ ...initial, details: { ...EMPTY_DETAILS }, answers: {} }),
       }),
-      { name: `business-health-check:${key}:v1` },
+      {
+        name: `business-health-check:${key}:v1`,
+        // Saves from before the last step have no note yet.
+        merge: (saved, current) => ({ ...current, ...(saved as Partial<FormState>), openText: (saved as Partial<FormState>)?.openText ?? '' }),
+      },
     ),
   );
 }
@@ -172,4 +187,21 @@ export function rupees(n: number): string {
   if (abs >= 1e7) return `${sign}₹${short(abs / 1e7)} crore`;
   if (abs >= 1e5) return `${sign}₹${short(abs / 1e5)} lakh`;
   return `${sign}₹${Math.round(abs).toLocaleString('en-IN')}`;
+}
+
+/** 0–100 for a scored question's answer: its figure through the bands, or the picked option's score. */
+export function fieldScore(f: FormField, a: Answer | undefined): number | null {
+  if (!a || a.skipped) return null;
+  if (f.kind === 'number' && typeof a.value === 'number') return f.number?.score ? Math.max(0, Math.min(100, Math.round(f.number.score(a.value)))) : null;
+  const opt = f.options?.find((o) => a.selected.includes(o.id));
+  return opt?.score ?? null;
+}
+
+/** The answer as the client would say it: "12 hours a month", or the picked option. */
+export function fieldAnswerLabel(f: FormField, a: Answer): string {
+  if (f.kind === 'number' && typeof a.value === 'number') {
+    const unit = f.number?.unit ?? '';
+    return `${f.number?.prefix ?? ''}${a.value.toLocaleString('en-IN')}${unit.startsWith('%') ? unit : ` ${unit}`}`;
+  }
+  return f.options?.filter((o) => a.selected.includes(o.id)).map((o) => o.label).join(', ') || a.other?.trim() || '';
 }

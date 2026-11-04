@@ -125,6 +125,7 @@ export const checkApi = {
     details: { businessName?: string; ownerName?: string; phone?: string; email?: string };
     answers: Answers;
     summary: { points: string[] };
+    openText?: string;
   }) => call<{ submissionId: number; token: string }>('submit-check.php', { body }),
 };
 

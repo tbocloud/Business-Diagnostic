@@ -1,13 +1,11 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { openApi } from '@/lib/api';
 import { useCheck } from '@/lib/store';
 import { ensureSubmission } from '@/lib/submit';
 import { FormFooter, FormHeader } from './FormChrome';
-import { VoiceRecorder } from './VoiceRecorder';
-
-const NOTE_MAX = 3000;
+import { NoteFields } from './NoteFields';
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
@@ -20,7 +18,6 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
  * touches) — it never quotes them.
  */
 export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode; onBack: () => void; onDone: () => void }) {
-  const id = useId();
   const text = useCheck((s) => s.open.text);
   const setOpen = useCheck((s) => s.setOpen);
   const voice = useCheck((s) => s.open.voice);
@@ -66,28 +63,17 @@ export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode;
         onSkipAll={onDone}
       />
 
-      <section className="mt-3 rounded-[18px] border border-line bg-card px-4 py-4 shadow-card sm:px-5 sm:py-5">
-        <label htmlFor={id} className="font-display block text-[16px] font-medium text-ink">
-          What’s going on?
-        </label>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
-          A few lines is plenty — what happens, how often, and what it costs you. For example: “Dealers pay 60 days late and I spend every
-          Saturday chasing them.”
-        </p>
-        <textarea
-          id={id}
-          rows={6}
-          value={text}
-          maxLength={NOTE_MAX}
-          onChange={(e) => setOpen({ text: e.target.value })}
-          placeholder="Tell us in your own words…"
-          className="field mt-3 min-h-[160px] resize-y"
-        />
-        <p className="mt-1.5 text-right text-[12px] text-muted" aria-live="polite">
-          {text.length.toLocaleString('en-IN')} / {NOTE_MAX.toLocaleString('en-IN')}
-        </p>
-        <VoiceRecorder />
-      </section>
+      <NoteFields
+        example="Dealers pay 60 days late and I spend every Saturday chasing them."
+        text={text}
+        setText={(t) => setOpen({ text: t })}
+        voice={{
+          voice,
+          setVoice: (v) => setOpen({ voice: v }),
+          ensure: ensureSubmission,
+          onSignals: (signals) => useCheck.getState().setOpenSignals(signals),
+        }}
+      />
 
       <FormFooter
         answered={said ? 1 : 0}
