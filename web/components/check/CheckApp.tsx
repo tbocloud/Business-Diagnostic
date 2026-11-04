@@ -86,7 +86,7 @@ export function CheckApp() {
   }
 
   const progress = overallProgress({ step, profile, ctx, doneSections, building, openDone });
-  const said = open.text.trim().length > 0;
+  const said = open.text.trim().length > 0 || !!open.voice;
   const states = railStates(step, doneSections, ctx, building, { done: openDone, said });
   const detail =
     step === OPEN_STEP

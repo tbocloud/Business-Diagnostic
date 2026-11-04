@@ -137,10 +137,13 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 
 ## The last step: "Anything else on your mind?"
 
-After the eight areas, the client can write a note about other problems, in their own words (optional). The note goes to the team only — the CRM record's **Client's Own Words**, plus a **Problem Summary** of short points written by the AI. The report never quotes it; it only uses which areas and services it touches, to rank the gaps and the services shown.
+After the eight areas, the client can write a note about other problems, in their own words, and/or **record a voice note** (up to 3 minutes, any language; it is written down into the note, where they can correct it). It all goes to the team only — the CRM record's **Client's Own Words**, a **Problem Summary** of short points written by the AI, and the recording as a private **Voice Note** attachment. The report never quotes any of it; it only uses which areas and services it touches, to rank the gaps and the services shown.
+
+Recordings wait in `api/uploads/voice/` (blocked from the web by `.htaccess`, ignored by git) until they are attached to the CRM record, then are deleted there.
 
 - Needs `db/003_open_problems.sql`.
-- The summary needs `OPENAI_API_KEY` in `api/config.php` (the same setting the old GPT site used; model `gpt-4o-mini`, change with `AI_MODEL`). Without a key the note is still saved and sent, without a summary.
+- The summary and the voice transcript need `OPENAI_API_KEY` in `api/config.php` (the same setting the old GPT site used; models `gpt-4o-mini` and `gpt-4o-mini-transcribe`, change with `AI_MODEL` / `AI_TRANSCRIBE_MODEL`). Without a key, notes and recordings are still saved and sent, without a summary or transcript.
+- Voice notes need PHP uploads of at least 4 MB (`php api/cron/check-crm.php` warns), and the CRM's DocType must have the `attach_voice_note` method (tbocloud/helpdesk).
 - Locally: `MOCK_AI=1 ./dev/run-local.sh` starts a fake AI (`dev/mock-ai.php`), so the summary works with no key and no cost.
 
 ## Changing the website

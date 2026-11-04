@@ -3,8 +3,9 @@
 import { useId, useState } from 'react';
 import { openApi } from '@/lib/api';
 import { useCheck } from '@/lib/store';
-import { syncSubmission } from '@/lib/submit';
+import { ensureSubmission } from '@/lib/submit';
 import { FormFooter, FormHeader } from './FormChrome';
+import { VoiceRecorder } from './VoiceRecorder';
 
 const NOTE_MAX = 3000;
 
@@ -14,15 +15,17 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 /**
  * Last, optional step: "Anything else on your mind?" The client types a note in their own
- * words. It goes to our team (CRM: a short summary + their words); the report only uses its
- * tags (which areas and services it touches) — it never quotes the note.
+ * words and/or records a voice note (written down into the note when the AI is on). Both go
+ * to our team (CRM: a short summary, their words, the recording); the report only uses the
+ * tags (which areas and services it touches) — it never quotes them.
  */
 export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode; onBack: () => void; onDone: () => void }) {
   const id = useId();
   const text = useCheck((s) => s.open.text);
   const setOpen = useCheck((s) => s.setOpen);
+  const voice = useCheck((s) => s.open.voice);
   const [saving, setSaving] = useState(false);
-  const said = text.trim().length > 0;
+  const said = text.trim().length > 0 || !!voice;
 
   const finish = async () => {
     if (saving) return;
@@ -31,13 +34,9 @@ export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode;
       setSaving(true);
       try {
         // The note is stored against the check-up, so make sure the check-up is saved first.
-        let { submissionId, submissionToken } = useCheck.getState();
-        if (!submissionId || !submissionToken) {
-          await syncSubmission();
-          ({ submissionId, submissionToken } = useCheck.getState());
-        }
-        if (submissionId && submissionToken) {
-          const res = await withTimeout(openApi.note({ submissionId, token: submissionToken, text: note }), 20000);
+        const saved = await ensureSubmission();
+        if (saved) {
+          const res = await withTimeout(openApi.note({ submissionId: saved.id, token: saved.token, text: note }), 20000);
           useCheck.getState().setOpenSignals(res.signals);
         }
       } catch (e) {
@@ -58,7 +57,7 @@ export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode;
         numeral="09"
         icon="PenLine"
         title="Anything else on your mind?"
-        intro="Is something in your business bothering you that we didn’t ask about? Tell us in your own words. It helps shape your report, and our team reads it so they understand your business properly."
+        intro="Is something in your business bothering you that we didn’t ask about? Tell us in your own words — type it, or record a voice note. It helps shape your report, and our team reads it so they understand your business properly."
         questionCount={1}
         minutes={2}
         skipLabel="Skip this step"
@@ -87,6 +86,13 @@ export function OpenStep({ notice, onBack, onDone }: { notice?: React.ReactNode;
         <p className="mt-1.5 text-right text-[12px] text-muted" aria-live="polite">
           {text.length.toLocaleString('en-IN')} / {NOTE_MAX.toLocaleString('en-IN')}
         </p>
+        <VoiceRecorder
+          onTranscript={(heard) => {
+            // What the voice note said goes into the note, where the client can correct it.
+            const current = useCheck.getState().open.text.trim();
+            setOpen({ text: (current ? `${current}\n\n${heard}` : heard).slice(0, NOTE_MAX) });
+          }}
+        />
       </section>
 
       <FormFooter

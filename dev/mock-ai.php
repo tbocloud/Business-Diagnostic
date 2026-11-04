@@ -1,13 +1,13 @@
 <?php
 // ─────────────────────────────────────────────────────────────
 //  A tiny stand-in for OpenAI's Chat Completions API, for local testing only —
-//  so the last step's note summary can be tried without a real key or any cost.
+//  so the last step's note summary and voice transcript can be tried without a real key or any cost.
 //    MOCK_AI=1 ./dev/run-local.sh            (starts it for you), or by hand:
 //    php -S 127.0.0.1:8098 dev/mock-ai.php
 //    OPENAI_API_KEY=mock-key AI_BASE_URL=http://127.0.0.1:8098 ./dev/run-local.sh
 //
-//  It answers in the same JSON shape the real API returns, with a keyword-based summary.
-//  It does not understand anything.
+//  It answers in the same JSON shape the real API returns: a keyword-based summary, and a
+//  canned transcript for any recording. It does not understand or listen to anything.
 // ─────────────────────────────────────────────────────────────
 
 header('Content-Type: application/json');
@@ -17,10 +17,16 @@ $send = function (int $status, array $data) {
     exit;
 };
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !str_ends_with(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/chat/completions')) {
-    $send(404, ['error' => ['message' => 'Only POST /chat/completions is mocked']]);
-}
+$path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') $send(404, ['error' => ['message' => 'Only POST is mocked']]);
 if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== 'Bearer mock-key') $send(401, ['error' => ['message' => 'Incorrect API key']]);
+
+// Speech to text: a canned transcript (it doesn't listen), so the voice-note flow can be tried.
+if (str_ends_with($path, '/audio/transcriptions')) {
+    if (empty($_FILES['file']['tmp_name'])) $send(400, ['error' => ['message' => 'No audio file']]);
+    $send(200, ['text' => 'Our dealers pay 60 days late and I chase them every Saturday. About 3 lakh is always stuck.']);
+}
+if (!str_ends_with($path, '/chat/completions')) $send(404, ['error' => ['message' => 'Not mocked: ' . $path]]);
 
 $req = json_decode((string) file_get_contents('php://input'), true) ?: [];
 $messages = is_array($req['messages'] ?? null) ? $req['messages'] : [];

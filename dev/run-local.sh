@@ -59,7 +59,7 @@ echo ' ready.'
 
 # Databases created before a newer db/*.sql file: apply what's missing (each file runs once).
 if ! docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic \
-     -e 'SELECT open_text FROM submissions LIMIT 1' >/dev/null 2>&1; then
+     -e 'SELECT open_voice FROM submissions LIMIT 1' >/dev/null 2>&1; then
   echo "Adding the last-step columns (db/003_open_problems.sql) to your local database…"
   docker exec -i bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic < db/003_open_problems.sql
 fi

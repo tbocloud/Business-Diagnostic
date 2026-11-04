@@ -33,6 +33,16 @@ export function buildSummary(profile: Profile, results: Results): SubmissionSumm
   };
 }
 
+/** The check-up's id + token, saving it first if it isn't saved yet; null when the server can't be reached. */
+export async function ensureSubmission(): Promise<{ id: number; token: string } | null> {
+  let { submissionId, submissionToken } = useCheck.getState();
+  if (!submissionId || !submissionToken) {
+    await syncSubmission();
+    ({ submissionId, submissionToken } = useCheck.getState());
+  }
+  return submissionId && submissionToken ? { id: submissionId, token: submissionToken } : null;
+}
+
 let inFlight: Promise<boolean> | null = null;
 let queued: Promise<boolean> | null = null;
 
