@@ -13,6 +13,7 @@
 
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/lib/crm.php';
+require_once __DIR__ . '/lib/open.php';
 
 const SECTION_IDS = ['sales', 'marketing', 'customers', 'operations', 'finance', 'team', 'technology', 'strategy'];
 
@@ -119,22 +120,6 @@ run(function () {
     // Reply first, then create the record in the CRM with the report link.
     respond_then(['submissionId' => $newId, 'token' => $token], 201, fn() => crm_sync_submission($newId));
 });
-
-/**
- * The note from the last step, kept only if open-problems.php hasn't already saved it.
- * A separate, fail-safe step: before db/003_open_problems.sql has run, the check-up itself still saves.
- */
-function save_open_text(int $id, ?string $text): void {
-    if ($text === null) return;
-    try {
-        db()->prepare(
-            'UPDATE submissions SET open_text = ?, open_updated_at = NOW()
-              WHERE id = ? AND (open_text IS NULL OR open_text <> ?)'
-        )->execute([$text, $id, $text]);
-    } catch (Throwable $e) {
-        error_log("Could not save the open-step note for submission $id: " . $e->getMessage());
-    }
-}
 
 /** Only a hash of the client's token is stored. */
 function token_hash(string $token): string {

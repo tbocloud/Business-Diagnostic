@@ -128,3 +128,19 @@ function open_clean_summary(array $out): array {
 function open_signals(array $summary): array {
     return ['areas' => $summary['areas'], 'services' => $summary['services']];
 }
+
+/**
+ * The note from the last step, kept only if open-problems.php hasn't already saved it.
+ * A separate, fail-safe step: before db/003_open_problems.sql has run, the check-up itself still saves.
+ */
+function save_open_text(int $id, ?string $text): void {
+    if ($text === null) return;
+    try {
+        db()->prepare(
+            'UPDATE submissions SET open_text = ?, open_updated_at = NOW()
+              WHERE id = ? AND (open_text IS NULL OR open_text <> ?)'
+        )->execute([$text, $id, $text]);
+    } catch (Throwable $e) {
+        error_log("Could not save the open-step note for submission $id: " . $e->getMessage());
+    }
+}

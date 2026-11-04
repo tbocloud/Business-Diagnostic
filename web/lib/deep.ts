@@ -19,14 +19,13 @@ export const DEEP_SECTIONS: FormSection[] = [
     icon: 'Compass',
     intro: 'A few facts about the size of the business — they show which stage you are really at, and what is holding you there.',
     fields: [
-      { id: 'deep_sales', kind: 'number', text: 'What are your average sales in a month?', hint: 'All sales, before any costs. A rough figure is fine.', number: { min: 0, max: 1e10, prefix: '₹', unit: 'a month', placeholder: 'e.g. 500000' }, options: NOT_SURE },
+      { id: 'deep_sales', kind: 'number', text: 'What are your total sales in an average month?', hint: 'All sales, before any costs. A rough figure is fine.', number: { min: 0, max: 1e10, prefix: '₹', unit: 'a month', placeholder: 'e.g. 500000' }, options: NOT_SURE },
       { id: 'deep_years', kind: 'number', text: 'How many years has the business been running?', number: { min: 0, max: 150, unit: 'years', placeholder: 'e.g. 6' } },
       { id: 'deep_people', kind: 'number', text: 'How many people work in the business, including you?', number: { min: 1, max: 100000, unit: 'people', placeholder: 'e.g. 12' } },
-      { id: 'deep_sites', kind: 'number', text: 'How many shops, branches, warehouses or sites do you run?', number: { min: 1, max: 10000, unit: 'sites', placeholder: 'e.g. 1' } },
       {
         id: 'deep_systems',
         kind: 'multi',
-        text: 'Which of these run on proper software today — not paper, sheets or memory?',
+        text: 'Which of these already run on proper software — not paper, Excel or memory?',
         options: [
           { id: 'accounts', label: 'Accounts and GST' },
           { id: 'billing', label: 'Billing and invoices' },
@@ -44,11 +43,10 @@ export const DEEP_SECTIONS: FormSection[] = [
     icon: 'PiggyBank',
     intro: 'Where each rupee of sales goes. From this we work out your real profit and the sales you need just to break even.',
     fields: [
-      { id: 'deep_direct', kind: 'number', text: 'Out of every ₹100 of sales, how much goes on the goods, materials or subcontractors you buy?', hint: 'Only what you buy to make or sell — not rent or salaries.', number: { min: 0, max: 100, prefix: '₹', unit: 'out of every ₹100', placeholder: 'e.g. 60' }, options: NOT_SURE },
+      { id: 'deep_direct', kind: 'number', text: 'Out of every ₹100 of sales, how much do you spend buying the goods, materials or work you sell?', hint: 'Only what you buy to make or sell — not rent or salaries.', number: { min: 0, max: 100, prefix: '₹', unit: 'out of every ₹100', placeholder: 'e.g. 60' }, options: NOT_SURE },
       { id: 'deep_salaries', kind: 'number', text: 'Salaries and wages in a month, including your own?', number: { min: 0, max: 1e9, prefix: '₹', unit: 'a month', placeholder: 'e.g. 150000' }, options: NOT_SURE },
-      { id: 'deep_overheads', kind: 'number', text: 'Rent, electricity, internet and other running costs in a month?', number: { min: 0, max: 1e9, prefix: '₹', unit: 'a month', placeholder: 'e.g. 60000' }, options: NOT_SURE },
+      { id: 'deep_overheads', kind: 'number', text: 'Rent, electricity, loan EMIs and other running costs in a month?', hint: 'Everything else you pay every month, apart from salaries and marketing.', number: { min: 0, max: 1e9, prefix: '₹', unit: 'a month', placeholder: 'e.g. 60000' }, options: NOT_SURE },
       { id: 'deep_marketing', kind: 'number', text: 'Marketing in a month?', hint: 'Ads, boosted posts, agency fees, printing.', show: notInStage1('mkt_spend'), number: { min: 0, max: 1e9, prefix: '₹', unit: 'a month', placeholder: 'e.g. 15000' }, options: [{ id: 'nothing', label: 'Nothing' }, ...NOT_SURE] },
-      { id: 'deep_emi', kind: 'number', text: 'Loan EMIs in a month?', number: { min: 0, max: 1e9, prefix: '₹', unit: 'a month', placeholder: 'e.g. 25000' }, options: [{ id: 'none', label: 'No loans' }] },
     ],
   },
   {
@@ -57,8 +55,8 @@ export const DEEP_SECTIONS: FormSection[] = [
     icon: 'TrendingUp',
     intro: 'How sales are moving, and the figures behind them — so we can show which growth ideas are worth the most money to you.',
     fields: [
-      { id: 'deep_growth', kind: 'number', text: 'Compared with last year, how much have sales grown — or dropped?', hint: 'Type a minus for a drop, e.g. -10.', number: { min: -100, max: 1000, unit: '% vs last year', placeholder: 'e.g. 12' }, options: NOT_SURE },
-      { id: 'deep_avg_sale', kind: 'number', text: 'What is the value of an average sale, order or invoice?', number: { min: 1, max: 1e9, prefix: '₹', unit: 'per sale', placeholder: 'e.g. 4500' }, options: NOT_SURE },
+      { id: 'deep_growth', kind: 'number', text: 'By what % have your sales grown — or dropped — compared with last year?', hint: 'Type a minus for a drop, e.g. -10.', number: { min: -100, max: 1000, unit: '% vs last year', placeholder: 'e.g. 12' }, options: NOT_SURE },
+      { id: 'deep_avg_sale', kind: 'number', text: 'What is your average bill or order value?', number: { min: 1, max: 1e9, prefix: '₹', unit: 'per sale', placeholder: 'e.g. 4500' }, options: NOT_SURE },
       { id: 'deep_enquiries', kind: 'number', text: 'Roughly how many new enquiries or leads do you get in a month?', show: notInStage1('sales_enquiries'), number: { min: 0, max: 100000, unit: 'a month', placeholder: 'e.g. 40' }, options: NOT_SURE },
       { id: 'deep_convert', kind: 'number', text: 'Out of every 10 enquiries, how many become paying customers?', show: notInStage1('sales_convert'), number: { min: 0, max: 10, unit: 'out of 10', placeholder: 'e.g. 3' }, options: NOT_SURE },
       {
@@ -81,8 +79,8 @@ export const DEEP_SECTIONS: FormSection[] = [
     intro: 'How many customers you have, how many are really good for the business, and how many you lose.',
     fields: [
       { id: 'deep_active', kind: 'number', text: 'How many customers bought from you in the last 3 months?', number: { min: 0, max: 1e7, unit: 'customers', placeholder: 'e.g. 120' }, options: NOT_SURE },
-      { id: 'deep_good', kind: 'number', text: 'Out of every 10 customers, how many are “good” — they come back, pay on time and don’t haggle hard?', number: { min: 0, max: 10, unit: 'out of 10', placeholder: 'e.g. 4' }, options: NOT_SURE },
-      { id: 'deep_top10', kind: 'number', text: 'What share of your sales comes from your top 10 customers?', number: { min: 0, max: 100, unit: '%', placeholder: 'e.g. 45' }, options: NOT_SURE },
+      { id: 'deep_good', kind: 'number', text: 'Out of every 10 customers, how many are “good” ones — they come back, pay on time and don’t haggle hard?', number: { min: 0, max: 10, unit: 'out of 10', placeholder: 'e.g. 4' }, options: NOT_SURE },
+      { id: 'deep_top10', kind: 'number', text: 'What % of your sales comes from your 10 biggest customers?', number: { min: 0, max: 100, unit: '%', placeholder: 'e.g. 45' }, options: NOT_SURE },
       { id: 'deep_lost', kind: 'number', text: 'Roughly how many regular customers stopped buying in the last 12 months?', number: { min: 0, max: 1e6, unit: 'customers', placeholder: 'e.g. 8' }, options: NOT_SURE },
     ],
   },
@@ -90,10 +88,9 @@ export const DEEP_SECTIONS: FormSection[] = [
     id: 'cash',
     title: 'Your cash',
     icon: 'Wallet',
-    intro: 'Profit on paper is not money in the bank. Three figures show how much cash is stuck, and how long you could keep going.',
+    intro: 'Profit on paper is not money in the bank. Two figures show how much cash is stuck outside the business, and how long you could keep going.',
     fields: [
       { id: 'deep_receivable', kind: 'number', text: 'How much do customers owe you right now?', number: { min: 0, max: 1e10, prefix: '₹', unit: 'owed to you', placeholder: 'e.g. 800000' }, options: NOT_SURE },
-      { id: 'deep_payable', kind: 'number', text: 'How much do you owe suppliers right now?', number: { min: 0, max: 1e10, prefix: '₹', unit: 'you owe', placeholder: 'e.g. 300000' }, options: NOT_SURE },
       { id: 'deep_cash', kind: 'number', text: 'Roughly how much cash is in the bank and in hand right now?', number: { min: 0, max: 1e10, prefix: '₹', unit: 'in cash', placeholder: 'e.g. 250000' }, options: NOT_SURE },
     ],
   },

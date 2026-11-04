@@ -5,8 +5,7 @@ import { CheckCircle2, Loader2, Mic, RotateCcw, Square, Trash2 } from 'lucide-re
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ApiError, openApi } from '@/lib/api';
-import { useCheck } from '@/lib/store';
-import { ensureSubmission } from '@/lib/submit';
+import type { OpenSignals } from '@/lib/types';
 
 const MAX_SECONDS = 180;
 /** What MediaRecorder can produce, best first (Chrome/Firefox: webm or ogg; Safari: mp4). */
@@ -30,14 +29,22 @@ function canRecord(): boolean {
   return typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
 }
 
+/** Where a check keeps its voice note: Stage 1, Stage 2 and the ERP check each have their own. */
+export interface VoiceBinding {
+  voice?: { seconds: number };
+  setVoice: (voice: { seconds: number } | undefined) => void;
+  /** The check's saved record (id + token), saving it first if needed. */
+  ensure: () => Promise<{ id: number; token: string } | null>;
+  /** The tags the server found in it (Stage 1's report uses them). */
+  onSignals?: (signals: OpenSignals) => void;
+}
+
 /**
  * "Record a voice note" for the last step — for clients who'd rather say it than type it. The
  * recording goes straight to the server and from there to the CRM record, where the team listens
  * to it (the server also writes it down and summarises it for them; the client never sees that).
  */
-export function VoiceRecorder() {
-  const voice = useCheck((s) => s.open.voice);
-  const setOpen = useCheck((s) => s.setOpen);
+export function VoiceRecorder({ voice, setVoice, ensure, onSignals }: VoiceBinding) {
   const [supported, setSupported] = useState(false);
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [elapsed, setElapsed] = useState(0);
@@ -77,11 +84,11 @@ export function VoiceRecorder() {
   const send = async (audio: Blob, ext: string, seconds: number) => {
     setState({ kind: 'saving' });
     try {
-      const saved = await ensureSubmission();
+      const saved = await ensure();
       if (!saved) throw new ApiError('We couldn’t reach our server just now.', 0);
       const res = await openApi.voice({ submissionId: saved.id, token: saved.token, audio, fileName: `voice-note.${ext}`, seconds });
-      setOpen({ voice: { seconds: Math.round(seconds) } });
-      useCheck.getState().setOpenSignals(res.signals);
+      setVoice({ seconds: Math.round(seconds) });
+      onSignals?.(res.signals);
       setState({ kind: 'idle' });
     } catch (e) {
       setState({
@@ -134,12 +141,12 @@ export function VoiceRecorder() {
   };
 
   const remove = async () => {
-    const saved = await ensureSubmission();
+    const saved = await ensure();
     if (!saved) return setState({ kind: 'failed', message: 'We couldn’t reach our server just now — try again in a moment.' });
     try {
       const res = await openApi.removeVoice({ submissionId: saved.id, token: saved.token });
-      setOpen({ voice: undefined });
-      useCheck.getState().setOpenSignals(res.signals);
+      setVoice(undefined);
+      onSignals?.(res.signals);
       setPreview(null);
       setState({ kind: 'idle' });
     } catch (e) {

@@ -36,6 +36,8 @@ export async function syncCheck(
       details,
       answers: answers ?? s.answers,
       summary: { points },
+      // The note from the last step also travels with the check, in case sending it on its own failed.
+      ...(s.openText.trim() ? { openText: s.openText.trim().slice(0, 3000) } : {}),
     });
     store.getState().setSubmission(res.submissionId, res.token);
     return true;
@@ -50,3 +52,21 @@ export function cleanFormAnswers(a: unknown) {
   return normalizeAnswers(a) ?? {};
 }
 
+
+/**
+ * The check's saved record (id + token), saving it first if it isn't yet — the note and voice
+ * note of the last step are stored against it.
+ */
+export async function ensureCheck(
+  kind: CheckKind,
+  store: UseBoundStore<StoreApi<FormState>>,
+  points: () => string[],
+  answers?: () => FormState['answers'],
+): Promise<{ id: number; token: string } | null> {
+  let { submissionId, submissionToken } = store.getState();
+  if (!submissionId || !submissionToken) {
+    await syncCheck(kind, store, points(), answers?.());
+    ({ submissionId, submissionToken } = store.getState());
+  }
+  return submissionId && submissionToken ? { id: submissionId, token: submissionToken } : null;
+}
