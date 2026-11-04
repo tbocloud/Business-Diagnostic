@@ -492,11 +492,14 @@ const WISH_WEIGHT = 120;
 function serviceWishes(answers: Answers, open: OpenSignals): ServiceId[] {
   const offload = answers.tech_offload;
   const fromOffload = offload && !offload.skipped ? offload.selected.flatMap((id) => OFFLOAD_SERVICES[id] ?? []) : [];
-  // What they described at the end counts double: they raised it themselves.
-  return [...fromOffload, ...open.services, ...open.services];
+  return [...fromOffload, ...open.services];
 }
 
-function recommendServices(gaps: Insight[], watch: Insight[], wishes: ServiceId[] = []): ServiceRecommendation[] {
+/**
+ * Services that fix the gaps, most relevant first. `wishes` nudge close calls; `first` — the services
+ * fitting what the client described at the end — lead, as long as they fix at least one gap.
+ */
+function recommendServices(gaps: Insight[], watch: Insight[], wishes: ServiceId[] = [], first: ServiceId[] = []): ServiceRecommendation[] {
   const recs = new Map<ServiceId, ServiceRecommendation>();
   for (const i of [...gaps, ...watch]) {
     for (const id of i.solution?.services ?? []) {
@@ -512,16 +515,8 @@ function recommendServices(gaps: Insight[], watch: Insight[], wishes: ServiceId[
     const rec = recs.get(id);
     if (rec) rec.weight += WISH_WEIGHT;
   }
-  return [...recs.values()].sort((a, b) => b.weight - a.weight);
-}
-
-/** Gaps in the areas the client described at the end move up the priority list (the report quotes nothing). */
-const DESCRIBED_AREA_BOOST = 1.25;
-
-function withDescribedAreas(section: SectionResult, open: OpenSignals): SectionResult {
-  if (!open.areas.includes(section.id)) return section;
-  const boost = (i: Insight) => ({ ...i, severity: Math.round(i.severity * DESCRIBED_AREA_BOOST) });
-  return { ...section, gaps: section.gaps.map(boost), watch: section.watch.map(boost) };
+  const leads = (id: ServiceId) => (first.includes(id) ? 1 : 0);
+  return [...recs.values()].sort((a, b) => leads(b.id) - leads(a.id) || b.weight - a.weight);
 }
 
 // ── "Your numbers" ──────────────────────────────────────────
@@ -736,13 +731,16 @@ export function numberFacts(profile: Profile, answers: Answers): NumberFact[] {
 export function computeResults(profile: Profile, answers: Answers): Results {
   const ctx: Ctx = { profile, answers };
   const open = readOpenSignals(answers);
-  const sections = SECTIONS.map((s) => withDescribedAreas(scoreSection(s.id, ctx), open));
+  const sections = SECTIONS.map((s) => scoreSection(s.id, ctx));
   const scored = sections.filter((s) => s.score !== null);
   const overall = scored.length ? Math.round(scored.reduce((sum, s) => sum + s.score!, 0) / scored.length) : null;
 
-  const bySeverity = (a: Insight, b: Insight) => b.severity - a.severity;
-  const allGaps = sections.flatMap((s) => s.gaps).sort(bySeverity);
-  const allWatch = sections.flatMap((s) => s.watch).sort(bySeverity);
+  // What the client described at the end leads the report — without quoting a word of it: gaps in
+  // the areas they talked about come first (top gaps, "most urgent issue", the 7/30/90-day plan).
+  const described = (i: Insight) => (open.areas.includes(i.section) ? 1 : 0);
+  const byPriority = (a: Insight, b: Insight) => described(b) - described(a) || b.severity - a.severity;
+  const allGaps = sections.flatMap((s) => s.gaps).sort(byPriority);
+  const allWatch = sections.flatMap((s) => s.watch).sort(byPriority);
   const allStrengths = sections
     .flatMap((s) => s.strengths)
     .sort((a, b) => b.score * b.weight - a.score * a.weight);
@@ -768,7 +766,7 @@ export function computeResults(profile: Profile, answers: Answers): Results {
         (quickWins ? ` — ${quickWins} of them ${quickWins === 1 ? 'is a quick win' : 'are quick wins'} you can start this week.` : '.');
 
   const potential = potentialScore(sections);
-  const services = recommendServices(allGaps, allWatch, serviceWishes(answers, open));
+  const services = recommendServices(allGaps, allWatch, serviceWishes(answers, open), open.services);
   const keyPoints = buildKeyPoints({
     profile,
     overall,
