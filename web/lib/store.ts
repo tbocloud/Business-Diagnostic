@@ -10,29 +10,18 @@ import { SECTIONS } from './sections';
 import type { Answer, Answers, OpenSignals, Profile, SectionId } from './types';
 
 // Steps: 0 = "About your business" form, 1..SECTIONS.length = one form per section,
-// then OPEN_STEP = "Anything else on your mind?" (optional: type a note or talk it through).
+// then OPEN_STEP = "Anything else on your mind?" (optional: a note in the client's own words).
 export const PROFILE_STEP = 0;
 export const LAST_STEP = SECTIONS.length;
 export const OPEN_STEP = LAST_STEP + 1;
 
-export interface ChatLine {
-  role: 'client' | 'assistant';
-  text: string;
-}
-
-/** The last, open step. The words stay on this device and go to the team (CRM) — never into the report. */
+/** The last, open step. The note goes to the team (CRM) — never into the report. */
 export interface OpenNote {
-  /** How the client chose to tell us; undefined until they pick. */
-  mode?: 'type' | 'chat';
-  /** Their typed note. */
+  /** Their note, in their own words. */
   text: string;
-  /** The chat so far, for showing it again (the server keeps its own copy). */
-  chat: ChatLine[];
-  /** The assistant wrapped up, or the message limit was reached. */
-  chatDone: boolean;
 }
 
-const EMPTY_OPEN: OpenNote = { text: '', chat: [], chatDone: false };
+const EMPTY_OPEN: OpenNote = { text: '' };
 export const sectionAtStep = (step: number) => (step >= 1 && step <= LAST_STEP ? SECTIONS[step - 1] : undefined);
 
 interface CheckState {
@@ -67,7 +56,6 @@ interface CheckState {
   setSubmission: (id: number, token: string) => void;
   setContactSaved: () => void;
   setOpen: (patch: Partial<OpenNote>) => void;
-  addChatLine: (line: ChatLine) => void;
   /** What the open step touches, as tags inside the answers (so every report view uses them). */
   setOpenSignals: (signals: OpenSignals) => void;
   finishOpen: () => void;
@@ -154,8 +142,6 @@ export const useCheck = create<CheckState>()(
 
       setOpen: (patch) => set((s) => ({ open: { ...s.open, ...patch } })),
 
-      addChatLine: (line) => set((s) => ({ open: { ...s.open, chat: [...s.open.chat, line] } })),
-
       setOpenSignals: (signals) =>
         set((s) => {
           const answers = { ...s.answers };
@@ -166,7 +152,7 @@ export const useCheck = create<CheckState>()(
 
       finishOpen: () => set({ openDone: true }),
 
-      reset: () => set({ ...initial, profile: { ...EMPTY_PROFILE, goals: [] }, answers: {}, open: { ...EMPTY_OPEN, chat: [] } }),
+      reset: () => set({ ...initial, profile: { ...EMPTY_PROFILE, goals: [] }, answers: {}, open: { ...EMPTY_OPEN } }),
     }),
     {
       name: 'business-health-check:v1',
@@ -187,7 +173,7 @@ export const useCheck = create<CheckState>()(
       // Saves from before the open step have no `open` yet.
       merge: (saved, current) => {
         const s = (saved ?? {}) as Partial<CheckState>;
-        return { ...current, ...s, open: { ...EMPTY_OPEN, ...(s.open ?? {}) }, openDone: !!s.openDone };
+        return { ...current, ...s, open: { text: typeof s.open?.text === 'string' ? s.open.text : '' }, openDone: !!s.openDone };
       },
     },
   ),

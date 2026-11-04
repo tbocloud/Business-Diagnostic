@@ -61,8 +61,8 @@ export function syncSubmission(): Promise<boolean> {
       profile,
       answers,
       summary: buildSummary(profile, results),
-      // A typed note from the last step also travels with the check-up, in case sending it on its own failed.
-      ...(s.open.mode === 'type' && s.open.text.trim() ? { openText: s.open.text.trim().slice(0, 3000) } : {}),
+      // The note from the last step also travels with the check-up, in case sending it on its own failed.
+      ...(s.open.text.trim() ? { openText: s.open.text.trim().slice(0, 3000) } : {}),
     })
     .then(({ submissionId, token }) => {
       useCheck.getState().setSubmission(submissionId, token);

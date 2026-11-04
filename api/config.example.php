@@ -25,8 +25,8 @@ define('CRM_API_SECRET', '');   // from the CRM admin
 // Public address of THIS website — used to build the report links stored in the CRM.
 define('SITE_URL', '');         // include the sub-folder, e.g. 'https://hrn.pxv.mybluehost.me/Business_Diagnostic_TBO'
 
-// ── Chat in the last step ("Anything else on your mind?") ────
-// Leave empty to switch the chat off (clients can still type a note).
+// ── AI summary of the client's note (last step: "Anything else on your mind?") ──
+// Leave empty to switch the summary off (the note itself still reaches the CRM).
 define('OPENAI_API_KEY', '');   // an OpenAI API key — keep it ONLY in this file on the server
 // define('AI_MODEL', 'gpt-4o-mini');   // optional: another OpenAI chat model
 

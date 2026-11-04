@@ -4,7 +4,7 @@
 //  Saves a finished health check (and re-saves it if the client edits answers).
 //
 //  Body: { submissionId?, token?, profile, answers, summary, openText? }
-//  openText: the client's typed note from the last step ("Anything else on your mind?").
+//  openText: the client's note from the last step ("Anything else on your mind?").
 //  → { submissionId, token }
 //
 //  Scores are calculated in the browser by the same engine the client sees;
@@ -121,15 +121,15 @@ run(function () {
 });
 
 /**
- * The typed note from the last step, kept only if open-problems.php hasn't already saved it.
+ * The note from the last step, kept only if open-problems.php hasn't already saved it.
  * A separate, fail-safe step: before db/003_open_problems.sql has run, the check-up itself still saves.
  */
 function save_open_text(int $id, ?string $text): void {
     if ($text === null) return;
     try {
         db()->prepare(
-            "UPDATE submissions SET open_text = ?, open_mode = COALESCE(open_mode, 'typed'), open_updated_at = NOW()
-              WHERE id = ? AND (open_text IS NULL OR open_text <> ?)"
+            'UPDATE submissions SET open_text = ?, open_updated_at = NOW()
+              WHERE id = ? AND (open_text IS NULL OR open_text <> ?)'
         )->execute([$text, $id, $text]);
     } catch (Throwable $e) {
         error_log("Could not save the open-step note for submission $id: " . $e->getMessage());

@@ -15,7 +15,7 @@ require_once __DIR__ . '/../lib/ai.php';
 
 const FIELDS = ['business_name', 'contact_name', 'phone', 'email', 'report_link'];
 // Filled by the last step ("Anything else on your mind?"). Optional: without them the rest still syncs.
-const OPEN_FIELDS = ['problem_summary', 'client_conversation'];
+const OPEN_FIELDS = ['problem_summary', 'client_note'];
 $failed = false;
 $ok   = function (string $m) { echo "  ✓ $m\n"; };
 $bad  = function (string $m, string $hint) use (&$failed) { $failed = true; echo "  ✗ $m\n    → $hint\n"; };
@@ -51,9 +51,9 @@ try {
 if (!$failed) {
     try {
         crm_request('GET', '/api/resource/' . rawurlencode(CRM_DOCTYPE) . '?fields=' . rawurlencode(json_encode(OPEN_FIELDS)) . '&limit_page_length=1');
-        $ok('DocType also has ' . implode(' and ', OPEN_FIELDS) . ' (the client\'s other problems)');
+        $ok('DocType also has ' . implode(' and ', OPEN_FIELDS) . ' (the client\'s note about other problems)');
     } catch (Throwable $e) {
-        $warn('DocType has no ' . implode(' / ', OPEN_FIELDS) . ' fields yet', 'Everything else still syncs. Ask the CRM admin to add them (Long Text) to see the client\'s other problems.');
+        $warn('DocType has no ' . implode(' / ', OPEN_FIELDS) . ' fields yet', 'Everything else still syncs. Ask the CRM admin to add them (Text / Long Text) to see the client\'s note.');
     }
 }
 
@@ -85,15 +85,15 @@ try {
     $bad('Database is missing the CRM columns', 'Run db/002_crm_link.sql once in phpMyAdmin.');
 }
 try {
-    db()->query('SELECT open_mode, open_text, open_chat, open_summary, open_updated_at FROM submissions LIMIT 1');
+    db()->query('SELECT open_text, open_summary, open_updated_at FROM submissions LIMIT 1');
     $ok('Database has the last-step columns (db/003_open_problems.sql)');
 } catch (Throwable $e) {
     $bad('Database is missing the last-step columns', 'Run db/003_open_problems.sql once in phpMyAdmin.');
 }
 
-// 5. The chat in the last step
-if (ai_enabled()) $ok('Chat is on (OPENAI_API_KEY set, model ' . AI_MODEL . ')');
-else $warn('Chat is off — no OPENAI_API_KEY', 'Clients can still type a note. Add OPENAI_API_KEY to api/config.php to switch the chat on.');
+// 5. The AI summary of the client's note
+if (ai_enabled()) $ok('Note summaries are on (OPENAI_API_KEY set, model ' . AI_MODEL . ')');
+else $warn('Note summaries are off — no OPENAI_API_KEY', 'The note still reaches the CRM, without the short summary. Add OPENAI_API_KEY to api/config.php to switch it on.');
 
 echo $failed ? "\nNot ready yet — fix the ✗ items above and run this again.\n" : "\nAll good — the CRM connection is ready.\n";
 exit($failed ? 1 : 0);

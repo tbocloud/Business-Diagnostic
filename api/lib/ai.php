@@ -1,10 +1,11 @@
 <?php
 // ─────────────────────────────────────────────────────────────
-//  AI for the last step of the check ("Anything else on your mind?").
+//  AI for the last step of the check ("Anything else on your mind?"): it turns the
+//  client's note into a short summary for the team.
 //
 //  OpenAI Chat Completions with Structured Outputs (a JSON schema the reply must match),
 //  over plain curl — no SDK, so it runs on normal PHP hosting.
-//  Switched off while OPENAI_API_KEY is empty: the chat hides, typing a note still works.
+//  Switched off while OPENAI_API_KEY is empty: the note is still saved and sent, without a summary.
 // ─────────────────────────────────────────────────────────────
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) { http_response_code(404); exit; }
