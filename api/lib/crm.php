@@ -31,9 +31,10 @@ function new_report_key(): string {
  * - The id and key sit after "#", which browsers never send to the server — so the key
  *   doesn't end up in access logs or Referer headers.
  */
-function report_link(int $id, string $key): string {
+function report_link(int $id, string $key, string $kind = 'health'): string {
     if (SITE_URL === '') throw new RuntimeException('SITE_URL is not set, so the report link cannot be built');
-    return rtrim(SITE_URL, '/') . "/results/#id=$id&k=$key";
+    $page = ['health' => 'results', 'deep' => 'deep/results', 'erp' => 'erp/results'][$kind] ?? 'results';
+    return rtrim(SITE_URL, '/') . "/$page/#id=$id&k=$key";
 }
 
 /** One call to the Frappe REST API. Returns the decoded JSON, or throws with a short, readable reason. */
@@ -93,25 +94,23 @@ function crm_sync_submission(int $id): void {
             db()->prepare('UPDATE submissions SET report_key = ? WHERE id = ?')->execute([$row['report_key'], $id]);
         }
 
-        // Field names must match the DocType in docs/crm-setup.md.
-        $fields = [
-            'business_name' => $row['company_name'] ?: 'Unnamed business',
+        // Field names must match the DocType in docs/crm-setup.md. Who the client is: only what we
+        // know, so syncing one check (e.g. Stage 2) never wipes details another one added.
+        $kind = $row['check_type'] ?? 'health';
+        $fields = array_filter([
+            'business_name' => $row['company_name'],
             'contact_name'  => $row['contact_name'],
             'phone'         => $row['phone_number'],
             'email'         => $row['email'],
-            'report_link'   => report_link($id, $row['report_key']),
-            // The last step ("Anything else on your mind?"). A CRM without these fields simply ignores them.
-            'problem_summary' => crm_problem_summary($row),
-            'client_note'     => crm_client_note($row),
-            // Set once the recording is attached (below); empty again when the client removed it.
-            'voice_note'      => ($row['open_voice'] ?? null) ? ($row['open_voice_url'] ?? null) : null,
-        ];
+        ], fn($v) => $v !== null && $v !== '') + crm_check_fields($kind, $id, $row);
 
         $doctype = rawurlencode(CRM_DOCTYPE);
-        if ($row['crm_ref']) {
-            crm_request('PUT', "/api/resource/$doctype/" . rawurlencode($row['crm_ref']), $fields);
-            $ref = $row['crm_ref'];
+        // Stage 2 / the ERP check after Stage 1 belong on the client's existing record.
+        $ref = $row['crm_ref'] ?: crm_parent_ref($row);
+        if ($ref) {
+            crm_request('PUT', "/api/resource/$doctype/" . rawurlencode($ref), $fields);
         } else {
+            $fields['business_name'] ??= 'Unnamed business';
             $res = crm_request('POST', "/api/resource/$doctype", $fields);
             $ref = $res['data']['name'] ?? null;
             if (!is_string($ref) || $ref === '') throw new RuntimeException('CRM did not return the new record name');
@@ -210,4 +209,47 @@ function crm_upload_voice(string $ref, string $path): string {
         throw new RuntimeException("CRM refused the voice note ($status)" . ($reason !== '' ? ': ' . substr((string) $reason, 0, 160) : ''));
     }
     return $url;
+}
+
+// ── Per check ────────────────────────────────────────────────
+
+/** What each kind of check puts on the CRM record. A CRM without some of these fields ignores them. */
+function crm_check_fields(string $kind, int $id, array $row): array {
+    if ($kind === 'deep' || $kind === 'erp') {
+        $summary = decode_json_col($row['results_summary'] ?? null);
+        $points = [];
+        foreach (is_array($summary['points'] ?? null) ? $summary['points'] : [] as $p) {
+            if (is_string($p) && ($p = trim(strip_tags($p))) !== '') $points[] = '• ' . $p;
+        }
+        $prefix = $kind === 'deep' ? 'stage2' : 'erp';
+        return [
+            "{$prefix}_report_link" => report_link($id, $row['report_key'], $kind),
+            "{$prefix}_summary"     => $points ? implode("\n", $points) : null,
+        ];
+    }
+    return [
+        'report_link'     => report_link($id, $row['report_key']),
+        // The last step ("Anything else on your mind?").
+        'problem_summary' => crm_problem_summary($row),
+        'client_note'     => crm_client_note($row),
+        // Set once the recording is attached (below); empty again when the client removed it.
+        'voice_note'      => ($row['open_voice'] ?? null) ? ($row['open_voice_url'] ?? null) : null,
+    ];
+}
+
+/** The CRM record of the Stage 1 check this one follows (syncing that check first if it has none yet). */
+function crm_parent_ref(array $row): ?string {
+    $parent = (int) ($row['parent_id'] ?? 0);
+    if ($parent <= 0) return null;
+    $get = function () use ($parent): ?string {
+        $stmt = db()->prepare('SELECT crm_ref FROM submissions WHERE id = ?');
+        $stmt->execute([$parent]);
+        return ($ref = $stmt->fetchColumn()) ? (string) $ref : null;
+    };
+    $ref = $get();
+    if ($ref === null) {
+        crm_sync_submission($parent);
+        $ref = $get();
+    }
+    return $ref;
 }

@@ -106,7 +106,26 @@ export const publicApi = {
     call<{ ok: true }>('save-contact.php', { body }),
   /** A report opened from its short link (/results/#id=…&k=…), e.g. from the CRM. POST keeps the key out of URLs/logs. */
   report: (id: string, k: string) =>
-    call<{ profile: unknown; answers: unknown; completedAt: string | null }>('report.php', { body: { id, k } }),
+    call<{ kind?: 'health' | 'deep' | 'erp'; profile?: unknown; details?: unknown; answers: unknown; completedAt: string | null }>(
+      'report.php',
+      { body: { id, k } },
+    ),
+};
+
+// ── Stage 2 and the ERP check ───────────────────────────────
+
+export const checkApi = {
+  /** Save (or re-save) a Stage 2 or ERP check. parentId/parentToken: the Stage 1 check on this device. */
+  submit: (body: {
+    kind: 'deep' | 'erp';
+    submissionId?: number;
+    token?: string;
+    parentId?: number;
+    parentToken?: string;
+    details: { businessName?: string; ownerName?: string; phone?: string; email?: string };
+    answers: Answers;
+    summary: { points: string[] };
+  }) => call<{ submissionId: number; token: string }>('submit-check.php', { body }),
 };
 
 // ── "Anything else on your mind?" — the last, open step ─────

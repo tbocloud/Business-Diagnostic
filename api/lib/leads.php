@@ -41,9 +41,11 @@ function lead_out(array $r, array $names): array {
 
 /** WHERE clause limiting what this user may see. */
 function visibility_sql(array $user, array &$params): string {
-    if ($user['role'] === 'admin') return '1=1';
+    // The panel works Stage 1 check-ups; Stage 2 and the ERP check reach the team on the CRM record.
+    $only = "check_type = 'health'";
+    if ($user['role'] === 'admin') return $only;
     $params[] = $user['id'];
-    return '(assigned_to IS NULL OR assigned_to = ?)';
+    return "$only AND (assigned_to IS NULL OR assigned_to = ?)";
 }
 
 function notes_for(int $submissionId, array $names): array {
