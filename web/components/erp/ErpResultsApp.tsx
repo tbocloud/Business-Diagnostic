@@ -23,6 +23,7 @@ export function ErpResultsApp() {
   const token = useErp((s) => s.submissionToken);
   const ownName = useErp((s) => s.details.businessName);
   const stage1Name = useCheck((s) => s.profile.businessName);
+  const profile = useCheck((s) => s.profile);
   const name = ownName || stage1Name;
   const [shared, setShared] = useState<Shared>({ state: 'none' });
 
@@ -44,8 +45,8 @@ export function ErpResultsApp() {
 
   const results = useMemo(() => {
     if (shared.state === 'ok') return computeErp(shared.answers);
-    return computeErp(answers);
-  }, [shared, answers]);
+    return computeErp(answers, profile);
+  }, [shared, answers, profile]);
 
   if (!hydrated || shared.state === 'loading') {
     return (

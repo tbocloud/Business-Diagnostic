@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Answer } from './types';
+import type { Answer, Profile } from './types';
 
 // ─────────────────────────────────────────────────────────────
 // A small framework for the follow-up checks — Stage 2 (your real numbers) and the ERP
@@ -16,6 +16,8 @@ export type FormAnswers = Record<string, Answer>;
 export interface FormOption {
   id: string;
   label: string;
+  /** 0–100 for scored questions (best → worst); leave out for neutral choices. */
+  score?: number;
   /** Multi-select: picking it clears the others ("None of these"). */
   exclusive?: boolean;
 }
@@ -30,13 +32,34 @@ export interface FormField {
   /** Choices; for number fields, quick alternatives such as "Not sure". */
   options?: FormOption[];
   maxPicks?: number;
+  /** Show "Other — type your own" (single / multi). */
+  allowOther?: boolean;
   /** Asked only when this returns true (e.g. skip what Stage 1 already told us). */
   show?: (ctx: FormCtx) => boolean;
+  /** Scored questions: what the report says (see lib/erp.ts). */
+  insight?: {
+    /** Headline when the answer reveals a gap. */
+    gap: string;
+    /** Headline when the answer is good. */
+    strength: string;
+    /** What the gap costs, in one or two plain sentences. */
+    why: string;
+    /** How ERPNext closes it. */
+    fix: string;
+    /** The ERPNext module that closes it. */
+    module: string;
+    /** Rough hours a month the gap takes, by option id (for "time this costs you"). */
+    hours?: Record<string, number>;
+  };
 }
 
 export interface FormSection {
   id: string;
   title: string;
+  /** Short label for the rail and charts. */
+  short?: string;
+  /** The section is asked only when this returns true (e.g. production only for manufacturers). */
+  show?: (ctx: FormCtx) => boolean;
   /** lucide-react icon name (see components/Icon.tsx). */
   icon: string;
   intro: string;
@@ -55,6 +78,8 @@ export interface FormCtx {
   answers: FormAnswers;
   /** Stage 1 answers on this device, when there are any (Stage 2 doesn't ask them twice). */
   stage1: FormAnswers;
+  /** The Stage 1 profile on this device (industry, team size…), when there is one. */
+  profile?: Profile;
 }
 
 export const EMPTY_DETAILS: FormDetails = { businessName: '', ownerName: '', phone: '', email: '' };
@@ -133,6 +158,10 @@ export function picked(answers: FormAnswers, id: string): string[] {
 
 export function visibleFields(section: FormSection, ctx: FormCtx): FormField[] {
   return section.fields.filter((f) => !f.show || f.show(ctx));
+}
+
+export function visibleSections(sections: FormSection[], ctx: FormCtx): FormSection[] {
+  return sections.filter((s) => (!s.show || s.show(ctx)) && visibleFields(s, ctx).length > 0);
 }
 
 /** ₹ in Indian style: 4,50,000 → "₹4.5 lakh", 1,20,00,000 → "₹1.2 crore", 8,500 → "₹8,500". */

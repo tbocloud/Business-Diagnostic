@@ -10,6 +10,7 @@ import { useCheck } from '@/lib/store';
 /** The ERP check: on its own from the start page, or after Stage 1 / Stage 2. */
 export function ErpApp() {
   const stage1 = useCheck((s) => s.answers);
+  const profile = useCheck((s) => s.profile);
   // Fill the contact step from Stage 1 on this device, when it's still empty.
   useEffect(() => {
     const { profile } = useCheck.getState();
@@ -22,11 +23,12 @@ export function ErpApp() {
       sections={ERP_SECTIONS}
       useStore={useErp}
       stage1={stage1}
+      profile={profile}
       eyebrow="ERP check"
       details={{ title: 'Where should we send your ERP plan?', intro: 'Your business and how to reach you — so the plan in your report goes to the right person.' }}
       resultsHref="/erp/results"
       onSubmit={async () => {
-        await syncCheck('erp', useErp, computeErp(useErp.getState().answers).points);
+        await syncCheck('erp', useErp, computeErp(useErp.getState().answers, profile).points);
       }}
     />
   );
