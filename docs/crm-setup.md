@@ -29,6 +29,8 @@ When a client finishes the health check, the website creates one record in the C
 | `problem_summary` | Problem Summary | Text | | | |
 | `client_note` | Client's Own Words | Long Text | | | |
 | `voice_note` | Voice Note | Attach | | | |
+| `stage2_report_link` / `stage2_summary` | Stage 2 Report Link / Summary | Data (URL) / Text | | | |
+| `erp_report_link` / `erp_summary` | ERP Check Report Link / Summary | Data (URL) / Text | | | |
 
 Only `report_link` is mandatory, because clients can leave the other details blank. The last three are filled when the client writes a note or records a voice note about other problems at the end of the check (a short AI summary, the note in their own words, the recording). They're optional for the CRM: without them, everything else still syncs. The recording is attached through the DocType's `attach_voice_note` method (Frappe's `upload_file` refuses audio from an API user without desk access), so it needs the Business Health Check DocType from tbocloud/helpdesk, not a hand-made copy.
 

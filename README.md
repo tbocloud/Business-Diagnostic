@@ -38,8 +38,8 @@ Then, in phpMyAdmin, select the database and open the **SQL** tab.
 
 | Situation | Run |
 |---|---|
-| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, `db/002_crm_link.sql`, then `db/003_open_problems.sql`, **once each, in that order** |
-| **Fresh install** | `db/000_create_submissions.sql`, `db/001_health_check_v2.sql`, `db/002_crm_link.sql`, then `db/003_open_problems.sql` |
+| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, `db/002_crm_link.sql`, `db/003_open_problems.sql`, then `db/004_more_checks.sql`, **once each, in that order** |
+| **Fresh install** | `db/000_create_submissions.sql`, then `001`, `002`, `003` and `004` |
 
 The upgrade keeps every existing row. Old submissions are marked **legacy** and still show in the panel with their old scores and AI analysis.
 
@@ -134,6 +134,18 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 - the settings for `api/config.php`
 - `db/002_crm_link.sql`
 - the retry cron job
+
+## Three checks
+
+| Check | Where | What it is |
+|---|---|---|
+| **Stage 1** — the Business Health Check | `/check/` → `/results/` | Multiple-choice and number questions in 8 areas, the last step, and the report |
+| **Stage 2** — your real numbers | `/deep/` → `/deep/results/`, offered on the Stage 1 report | The business's own figures: the stage it is really at and what holds it there, profit and break-even, growth ideas worth rupees, customer quality, cash. Stage 1 answers carry over |
+| **ERP check** | `/erp/` → `/erp/results/`, from the start page ("Only looking at ERP?") or after Stage 1 | What they use today and what slows them down, size, modules, readiness — with a verdict, Phase 1/2 modules and a rough timeline |
+
+Stage 2 and the ERP check are saved by `api/submit-check.php` (`check_type` `deep` / `erp`, joined to the Stage 1 check on the same device). They stay out of the BDE panel: the team sees them on the CRM record (report link + summary each).
+
+**One client, one CRM record.** Every check lands on the client's existing record: the Stage 1 check on the same device, else a record with the same email, the same phone (however it was typed), or the same business name *and* contact name. When contact details given later ("Call me back") show the client was already on another record, the records are merged into the oldest (the DocType's `merge_into`).
 
 ## The last step: "Anything else on your mind?"
 

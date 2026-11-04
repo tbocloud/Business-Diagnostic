@@ -100,13 +100,14 @@ function crm_sync_submission(int $id): void {
         $fields = array_filter([
             'business_name' => $row['company_name'],
             'contact_name'  => $row['contact_name'],
-            'phone'         => $row['phone_number'],
-            'email'         => $row['email'],
+            'phone'         => crm_phone($row['phone_number']),
+            'email'         => $row['email'] ? trim($row['email']) : null,
         ], fn($v) => $v !== null && $v !== '') + crm_check_fields($kind, $id, $row);
 
         $doctype = rawurlencode(CRM_DOCTYPE);
-        // Stage 2 / the ERP check after Stage 1 belong on the client's existing record.
-        $ref = $row['crm_ref'] ?: crm_parent_ref($row);
+        // The client's existing record: this check's own, else the Stage 1 check it follows (same
+        // device), else one with the same email, phone, or business name and contact name.
+        $ref = $row['crm_ref'] ?: (crm_parent_ref($row) ?? (crm_find_client($row)[0] ?? null));
         if ($ref) {
             crm_request('PUT', "/api/resource/$doctype/" . rawurlencode($ref), $fields);
         } else {
@@ -121,6 +122,8 @@ function crm_sync_submission(int $id): void {
             db()->prepare('UPDATE submissions SET open_voice_url = ? WHERE id = ?')->execute([$url, $id]);
             voice_delete_file($row['open_voice']);
         }
+        // Contact details given later can show the client already had a record: keep the oldest.
+        $ref = crm_merge_duplicates($row, $ref);
         db()->prepare('UPDATE submissions SET crm_ref = ?, crm_synced_at = NOW(), crm_error = NULL WHERE id = ?')->execute([$ref, $id]);
     } catch (Throwable $e) {
         error_log("CRM sync failed for submission $id: " . $e->getMessage());
@@ -252,4 +255,68 @@ function crm_parent_ref(array $row): ?string {
         $ref = $get();
     }
     return $ref;
+}
+
+// ── The same client, once ────────────────────────────────────
+
+/** One form for a phone number, so it matches however it was typed: "+91 98950 22334" → "+919895022334". */
+function crm_phone(?string $phone): ?string {
+    if ($phone === null || trim($phone) === '') return null;
+    $digits = preg_replace('/\D/', '', $phone);
+    if (strlen($digits) === 10) return '+91' . $digits;
+    if (strlen($digits) === 11 && $digits[0] === '0') return '+91' . substr($digits, 1);
+    if (strlen($digits) === 12 && strpos($digits, '91') === 0) return '+' . $digits;
+    return (strpos(trim($phone), '+') === 0 ? '+' : '') . $digits;
+}
+
+/**
+ * CRM records of the same client, oldest first: the same email or phone — or (unless $strong)
+ * the same business name AND contact name.
+ */
+function crm_find_client(array $row, bool $strong = false): array {
+    $found = [];
+    $or = [];
+    if (!empty($row['email'])) $or[] = ['email', '=', trim($row['email'])];
+    $phone = crm_phone($row['phone_number'] ?? null);
+    // The last 10 digits in order with anything between, so "+91 94470 12345", "094470-12345" and
+    // "+919447012345" (as BDEs may have typed them in the CRM) all match.
+    if ($phone !== null) $or[] = ['phone', 'like', '%' . implode('%', str_split(substr(preg_replace('/\D/', '', $phone), -10)))];
+    if ($or) $found = array_merge($found, crm_list(['or_filters' => $or]));
+    if (!$strong && !empty($row['company_name']) && !empty($row['contact_name'])) {
+        $found = array_merge($found, crm_list(['filters' => [
+            ['business_name', '=', trim($row['company_name'])],
+            ['contact_name', '=', trim($row['contact_name'])],
+        ]]));
+    }
+    usort($found, fn($a, $b) => strcmp((string) $a['creation'], (string) $b['creation']));
+    return array_values(array_unique(array_map(fn($r) => (string) $r['name'], $found)));
+}
+
+/** A few CRM records (name + creation) matching Frappe filters. */
+function crm_list(array $filters): array {
+    $query = ['fields' => json_encode(['name', 'creation']), 'order_by' => 'creation asc', 'limit_page_length' => 10];
+    foreach ($filters as $key => $value) $query[$key] = json_encode($value);
+    $res = crm_request('GET', '/api/resource/' . rawurlencode(CRM_DOCTYPE) . '?' . http_build_query($query));
+    return array_values(array_filter(is_array($res['data'] ?? null) ? $res['data'] : [], fn($r) => is_array($r) && isset($r['name'])));
+}
+
+/**
+ * When this check's phone or email shows the client is also on other records, merge them
+ * all into the oldest (the DocType's merge_into, run in the CRM) and point our checks at it.
+ * Returns the record this check now belongs to.
+ */
+function crm_merge_duplicates(array $row, string $ref): string {
+    if (empty($row['email']) && empty($row['phone_number'])) return $ref;
+    $same = crm_find_client($row, true);
+    if (!in_array($ref, $same, true)) $same[] = $ref;
+    if (count($same) < 2) return $ref;
+    $target = $same[0];
+    foreach (array_slice($same, 1) as $other) {
+        crm_request('POST', '/api/method/run_doc_method', [
+            'dt' => CRM_DOCTYPE, 'dn' => $other, 'method' => 'merge_into', 'args' => json_encode(['target' => $target]),
+        ]);
+        db()->prepare('UPDATE submissions SET crm_ref = ? WHERE crm_ref = ?')->execute([$target, $other]);
+        error_log("CRM: merged $other into $target (same client)");
+    }
+    return $target;
 }
