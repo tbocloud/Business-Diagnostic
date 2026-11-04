@@ -15,7 +15,7 @@ require_once __DIR__ . '/../lib/ai.php';
 
 const FIELDS = ['business_name', 'contact_name', 'phone', 'email', 'report_link'];
 // Filled by the last step ("Anything else on your mind?"). Optional: without them the rest still syncs.
-const OPEN_FIELDS = ['problem_summary', 'client_note', 'voice_note'];
+const OPEN_FIELDS = ['problem_summary', 'client_note', 'voice_note', 'stage2_report_link', 'stage2_summary', 'erp_report_link', 'erp_summary'];
 $failed = false;
 $ok   = function (string $m) { echo "  ✓ $m\n"; };
 $bad  = function (string $m, string $hint) use (&$failed) { $failed = true; echo "  ✗ $m\n    → $hint\n"; };
@@ -51,9 +51,9 @@ try {
 if (!$failed) {
     try {
         crm_request('GET', '/api/resource/' . rawurlencode(CRM_DOCTYPE) . '?fields=' . rawurlencode(json_encode(OPEN_FIELDS)) . '&limit_page_length=1');
-        $ok('DocType also has ' . implode(' and ', OPEN_FIELDS) . ' (the client\'s note about other problems)');
+        $ok('DocType also has the fields for the last step, Stage 2 and the ERP check');
     } catch (Throwable $e) {
-        $warn('DocType has no ' . implode(' / ', OPEN_FIELDS) . ' fields yet', 'Everything else still syncs. Ask the CRM admin to add them (Text / Long Text / Attach) to see the client\'s note and voice note.');
+        $warn('DocType is missing some of: ' . implode(', ', OPEN_FIELDS), 'Everything else still syncs. Update the Business Health Check DocType (tbocloud/helpdesk) to see the client\'s note, voice note, Stage 2 and ERP check.');
     }
 }
 
@@ -89,6 +89,12 @@ try {
     $ok('Database has the last-step columns (db/003_open_problems.sql)');
 } catch (Throwable $e) {
     $bad('Database is missing the last-step columns', 'Run db/003_open_problems.sql once in phpMyAdmin.');
+}
+try {
+    db()->query('SELECT check_type, parent_id FROM submissions LIMIT 1');
+    $ok('Database has the Stage 2 / ERP check columns (db/004_more_checks.sql)');
+} catch (Throwable $e) {
+    $bad('Database is missing the Stage 2 / ERP check columns', 'Run db/004_more_checks.sql once in phpMyAdmin.');
 }
 
 // 5. The AI summary of the client's note
