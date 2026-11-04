@@ -115,21 +115,21 @@ export const openApi = {
   /** The client's note. Returns which areas and services it touches (tags only, for the report; empty when the AI is off). */
   note: (body: { submissionId: number; token: string; text: string }) =>
     call<{ ok: true; signals: OpenSignals }>('open-problems.php', { body }),
-  /** A voice note (replaces an earlier one). Returns what it says when the AI is on, else null. */
+  /** A voice note (replaces an earlier one). Returns its tags for the report (the words stay with the team). */
   voice: (args: { submissionId: number; token: string; audio: Blob; fileName: string; seconds: number }) => {
     const form = new FormData();
     form.set('submissionId', String(args.submissionId));
     form.set('token', args.token);
     form.set('seconds', String(Math.round(args.seconds)));
     form.set('audio', args.audio, args.fileName);
-    return upload<{ ok: true; transcript: string | null }>('voice-note.php', form);
+    return upload<{ ok: true; signals: OpenSignals }>('voice-note.php', form);
   },
   removeVoice: (args: { submissionId: number; token: string }) => {
     const form = new FormData();
     form.set('submissionId', String(args.submissionId));
     form.set('token', args.token);
     form.set('remove', '1');
-    return upload<{ ok: true }>('voice-note.php', form);
+    return upload<{ ok: true; signals: OpenSignals }>('voice-note.php', form);
   },
 };
 

@@ -137,7 +137,7 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 
 ## The last step: "Anything else on your mind?"
 
-After the eight areas, the client can write a note about other problems, in their own words, and/or **record a voice note** (up to 3 minutes, any language; it is written down into the note, where they can correct it). It all goes to the team only — the CRM record's **Client's Own Words**, a **Problem Summary** of short points written by the AI, and the recording as a private **Voice Note** attachment. The report never quotes any of it; it only uses which areas and services it touches, to rank the gaps and the services shown.
+After the eight areas, the client can write a note about other problems, in their own words, or **record a voice note** instead (up to 3 minutes, any language) — whichever is easier. It all goes to the team only — the CRM record's **Client's Own Words** (the note, and what the voice note says, written down by the AI on the server — the client never sees that), a **Problem Summary** of short points covering both, and the recording as a private **Voice Note** attachment. The report never quotes any of it; it only uses which areas and services it touches, to rank the gaps and the services shown.
 
 Recordings wait in `api/uploads/voice/` (blocked from the web by `.htaccess`, ignored by git) until they are attached to the CRM record, then are deleted there.
 

@@ -3,19 +3,20 @@
 //  POST /api/voice-note.php  (multipart/form-data) — a voice note in the last step
 //  of the check ("Anything else on your mind?").
 //
-//    submissionId, token, audio (file), seconds  → { ok, transcript }   transcript may be null
-//    submissionId, token, remove=1               → { ok }
+//    submissionId, token, audio (file), seconds  → { ok, signals }
+//    submissionId, token, remove=1               → { ok, signals }
 //
-//  The recording is kept privately in api/uploads/voice/ (never served) until it is
-//  attached to the CRM record (field voice_note), then deleted here. With OPENAI_API_KEY
-//  it is also written down, so the client can check it in their note.
+//  The client records instead of typing (or as well) — whatever is easier. The recording
+//  is kept privately in api/uploads/voice/ (never served) until it is attached to the CRM
+//  record (field voice_note), then deleted here. With OPENAI_API_KEY we also write it down
+//  (never shown to the client) and summarise it with their note for the team (lib/open.php).
 //  The token (from submit.php) proves the check-up is the caller's — which is also why a
 //  form post from another site gets nowhere, even though this endpoint takes multipart.
 //  Needs db/003_open_problems.sql.
 // ─────────────────────────────────────────────────────────────
 
 require_once __DIR__ . '/lib/bootstrap.php';
-require_once __DIR__ . '/lib/ai.php';
+require_once __DIR__ . '/lib/open.php';
 require_once __DIR__ . '/lib/crm.php';
 
 const VOICE_MAX_BYTES   = 8 * 1024 * 1024;
@@ -48,7 +49,8 @@ run(function () {
                     open_updated_at = NOW() WHERE id = ?'
         )->execute([$id]);
         add_activity($id, null, 'system', 'Client removed their voice note.');
-        respond_then(['ok' => true], 200, fn() => crm_sync_submission($id));
+        $summary = open_refresh_summary($id); // now from their typed note alone, if any
+        respond_then(['ok' => true, 'signals' => open_signals($summary)], 200, fn() => crm_sync_submission($id));
     }
 
     $file = $_FILES['audio'] ?? null;
@@ -84,7 +86,8 @@ run(function () {
                 open_updated_at = NOW() WHERE id = ?'
     )->execute([$name, $seconds, $transcript, $id]);
     add_activity($id, null, 'system', 'Client recorded a voice note' . ($seconds ? sprintf(' (%d:%02d)', intdiv($seconds, 60), $seconds % 60) : '') . '.');
+    $summary = open_refresh_summary($id);
 
-    // Reply first, then attach the recording to the CRM record.
-    respond_then(['ok' => true, 'transcript' => $transcript], 200, fn() => crm_sync_submission($id));
+    // Reply first (tags only — the words stay with the team), then attach the recording to the CRM record.
+    respond_then(['ok' => true, 'signals' => open_signals($summary)], 200, fn() => crm_sync_submission($id));
 });

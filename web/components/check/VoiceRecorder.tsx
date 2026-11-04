@@ -31,17 +31,16 @@ function canRecord(): boolean {
 }
 
 /**
- * "Record a voice note" for the last step. The recording goes straight to the server (and from there
- * to the CRM record, for the team to listen to); what it says comes back to `onTranscript`, so the
- * client can check it in their note.
+ * "Record a voice note" for the last step — for clients who'd rather say it than type it. The
+ * recording goes straight to the server and from there to the CRM record, where the team listens
+ * to it (the server also writes it down and summarises it for them; the client never sees that).
  */
-export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) => void }) {
+export function VoiceRecorder() {
   const voice = useCheck((s) => s.open.voice);
   const setOpen = useCheck((s) => s.setOpen);
   const [supported, setSupported] = useState(false);
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [elapsed, setElapsed] = useState(0);
-  const [heard, setHeard] = useState<'text' | 'saved' | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -82,8 +81,7 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
       if (!saved) throw new ApiError('We couldn’t reach our server just now.', 0);
       const res = await openApi.voice({ submissionId: saved.id, token: saved.token, audio, fileName: `voice-note.${ext}`, seconds });
       setOpen({ voice: { seconds: Math.round(seconds) } });
-      if (res.transcript) onTranscript(res.transcript);
-      setHeard(res.transcript ? 'text' : 'saved');
+      useCheck.getState().setOpenSignals(res.signals);
       setState({ kind: 'idle' });
     } catch (e) {
       setState({
@@ -95,7 +93,6 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
   };
 
   const start = async () => {
-    setHeard(null);
     setState({ kind: 'starting' });
     try {
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -140,9 +137,9 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
     const saved = await ensureSubmission();
     if (!saved) return setState({ kind: 'failed', message: 'We couldn’t reach our server just now — try again in a moment.' });
     try {
-      await openApi.removeVoice({ submissionId: saved.id, token: saved.token });
+      const res = await openApi.removeVoice({ submissionId: saved.id, token: saved.token });
       setOpen({ voice: undefined });
-      setHeard(null);
+      useCheck.getState().setOpenSignals(res.signals);
       setPreview(null);
       setState({ kind: 'idle' });
     } catch (e) {
@@ -178,11 +175,7 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               Voice note added ({clock(voice.seconds)})
             </span>
-            <span className="text-[13px] text-ink-2">
-              {heard === 'text'
-                ? 'We wrote down what you said above — please fix anything we got wrong.'
-                : 'Our team will listen to it.'}
-            </span>
+            <span className="text-[13px] text-ink-2">Our team will listen to it — no need to type it as well.</span>
           </p>
           {preview && <audio controls src={preview} className="h-10 w-full max-w-md" />}
           <div className="flex flex-wrap gap-2">
@@ -202,7 +195,7 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
             <Mic className="h-4 w-4" aria-hidden="true" />
             Record a voice note
           </Button>
-          <span className="text-[13px] text-ink-2">Easier to say it? Speak in any language, up to 3 minutes.</span>
+          <span className="text-[13px] text-ink-2">Easier to say it? Record instead of typing — any language, up to 3 minutes.</span>
         </div>
       )}
       {state.kind === 'failed' && (
