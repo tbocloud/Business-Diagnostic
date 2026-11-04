@@ -1,4 +1,5 @@
-import { Clock, Lock, SkipForward, UserRoundX } from 'lucide-react';
+import { ArrowRight, Boxes, Calculator, Check, Clock, Lock, ScanSearch, SkipForward, UserRoundX } from 'lucide-react';
+import Link from 'next/link';
 import { Icon } from '@/components/Icon';
 import { LandingActions } from '@/components/landing/LandingActions';
 import { SamplePreview } from '@/components/landing/SamplePreview';
@@ -13,6 +14,46 @@ const REASSURANCE = [
   { Icon: UserRoundX, text: 'No sign-up' },
   { Icon: SkipForward, text: 'Skip anything you like' },
   { Icon: Lock, text: 'Private — seen only by our team' },
+];
+
+const CHECKS = [
+  {
+    href: '/check',
+    Icon: ScanSearch,
+    eyebrow: 'Stage 1 · about 10 minutes',
+    title: 'Business Health Check',
+    body: 'Eight areas of your business, scored against a fair target for your stage.',
+    gets: ['Your real gap — and the headache it causes', 'Strengths to build on', 'A 7 / 30 / 90-day action plan'],
+    cta: 'Start Stage 1',
+    primary: true,
+  },
+  {
+    href: '/deep',
+    Icon: Calculator,
+    eyebrow: 'Stage 2 · about 8 minutes',
+    title: 'Your real numbers',
+    body: 'Your own figures — profit, sales, customers, cash. Best after Stage 1.',
+    gets: ['The stage you are really at, and what holds you there', 'Growth ideas worth real rupees', 'How many of your customers are good ones'],
+    cta: 'Start Stage 2',
+  },
+  {
+    href: '/erp',
+    Icon: Boxes,
+    eyebrow: 'ERP check · about 6 minutes',
+    title: 'Find your ERP gaps',
+    body: 'Accounts, stock, billing, purchase, payroll — where your current system leaves work to people.',
+    gets: ['A system-health score, area by area', 'The hours a month your gaps cost', 'Which ERPNext modules to start with'],
+    cta: 'Start the ERP check',
+  },
+];
+
+const ERP_GAPS = [
+  'Every bill typed twice',
+  'GST returns take days',
+  'Stock never matches the shelf',
+  'Branches you can’t see live',
+  'Payroll in Excel',
+  'Owner can’t see today’s numbers',
 ];
 
 const STEPS = [
@@ -75,6 +116,50 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── Three checks ──────────────────────────────── */}
+        <section aria-labelledby="checks-title" className="border-t border-line">
+          <div className="mx-auto max-w-[78rem] px-4 py-16 sm:px-6 lg:py-20">
+            <div className="max-w-2xl">
+              <p className="eyebrow">Three checks, one clear picture</p>
+              <h2 id="checks-title" className="font-display mt-3 text-[32px] font-medium leading-[1.1] tracking-[-0.015em] text-ink sm:text-[40px]">
+                Start where it hurts most
+              </h2>
+              <p className="mt-3 text-[16px] leading-relaxed text-ink-2">Each one is free, takes a few minutes, and ends in a clear report. Answers carry over between them.</p>
+            </div>
+            <ul className="mt-10 grid gap-4 lg:grid-cols-3">
+              {CHECKS.map((c) => (
+                <li key={c.href}>
+                  <Link
+                    href={c.href}
+                    className={`group flex h-full flex-col rounded-[24px] border px-6 py-6 shadow-card transition-colors sm:px-7 sm:py-7 ${c.primary ? 'border-brand bg-brand text-white' : 'border-line bg-card hover:border-brand'}`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span aria-hidden="true" className={`grid h-11 w-11 place-items-center rounded-xl ${c.primary ? 'bg-white/15 text-white' : 'bg-brand text-white'}`}>
+                        <c.Icon className="h-5 w-5" />
+                      </span>
+                      <span className={`eyebrow ${c.primary ? 'text-white/80' : 'text-brand'}`}>{c.eyebrow}</span>
+                    </span>
+                    <span className={`font-display mt-4 text-[24px] font-medium leading-tight ${c.primary ? 'text-white' : 'text-ink'}`}>{c.title}</span>
+                    <span className={`mt-1.5 text-[15px] leading-relaxed ${c.primary ? 'text-white/85' : 'text-ink-2'}`}>{c.body}</span>
+                    <ul className="mt-4 space-y-2">
+                      {c.gets.map((g) => (
+                        <li key={g} className={`flex gap-2 text-[14px] ${c.primary ? 'text-white/90' : 'text-ink'}`}>
+                          <Check className={`mt-[3px] h-4 w-4 shrink-0 ${c.primary ? 'text-accent-light' : 'text-ok-ink'}`} aria-hidden="true" />
+                          {g}
+                        </li>
+                      ))}
+                    </ul>
+                    <span className={`mt-auto inline-flex items-center gap-1.5 pt-6 text-[15px] font-semibold ${c.primary ? 'text-white' : 'text-brand'}`}>
+                      {c.cta}
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         {/* ── How it works ───────────────────────────────── */}
         <section aria-labelledby="how-title" className="border-y border-line bg-paper-deep/50">
           <div className="mx-auto max-w-[78rem] px-4 py-16 sm:px-6 lg:py-20">
@@ -133,6 +218,36 @@ export default function LandingPage() {
                 </li>
               ))}
             </ol>
+
+            {/* ── ERP: the gaps your current system leaves ── */}
+            <div className="mt-16 grid gap-8 overflow-hidden rounded-[28px] border border-line bg-card px-6 py-8 shadow-card sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:items-center">
+              <div>
+                <p className="eyebrow flex items-center gap-2 text-brand">
+                  <Boxes className="h-4 w-4" aria-hidden="true" />
+                  The ERP check
+                </p>
+                <h2 className="font-display mt-3 text-balance text-[30px] font-medium leading-[1.1] tracking-[-0.015em] text-ink sm:text-[38px]">
+                  Still running on Tally, Excel and WhatsApp?
+                </h2>
+                <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-ink-2">
+                  Find exactly where your current setup leaves work to people — area by area — how many hours a month it costs, and what ERPNext would fix first.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <ButtonLink href="/erp" size="lg">
+                    Find your ERP gaps
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </ButtonLink>
+                  <span className="text-[14px] text-muted">About 6 minutes · free</span>
+                </div>
+              </div>
+              <ul className="grid grid-cols-2 gap-2.5" aria-label="Gaps the ERP check looks for">
+                {ERP_GAPS.map((g) => (
+                  <li key={g} className="rounded-2xl border border-risk/20 bg-risk-soft/50 px-3.5 py-3 text-[14px] font-medium leading-snug text-ink">
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             <div className="mt-14 flex flex-col items-start justify-between gap-6 rounded-[28px] bg-brand px-6 py-8 text-white sm:flex-row sm:items-center sm:px-10">
               <p className="font-display max-w-xl text-[24px] font-medium leading-snug sm:text-[28px]">

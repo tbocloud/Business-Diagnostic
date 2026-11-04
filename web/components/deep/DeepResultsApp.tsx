@@ -23,6 +23,7 @@ export function DeepResultsApp() {
   const token = useDeep((s) => s.submissionToken);
   const stage1 = useCheck((s) => s.answers);
   const name = useCheck((s) => s.profile.businessName);
+  const industry = useCheck((s) => s.profile.industry);
   const [shared, setShared] = useState<Shared>({ state: 'none' });
 
   useEffect(() => {
@@ -43,8 +44,8 @@ export function DeepResultsApp() {
 
   const results = useMemo(() => {
     if (shared.state === 'ok') return computeDeep(shared.answers, stage1From(shared.answers));
-    return computeDeep(answers, stage1);
-  }, [shared, answers, stage1]);
+    return computeDeep(answers, stage1, industry);
+  }, [shared, answers, stage1, industry]);
 
   if (!hydrated || shared.state === 'loading') {
     return (

@@ -63,7 +63,7 @@ export function LandingActions() {
       >
         <Boxes className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
         <span>
-          <strong className="font-semibold text-ink">Only looking at ERP?</strong> Take the 5-minute ERP check instead
+          <strong className="font-semibold text-ink">Only looking at ERP?</strong> Find the gaps in your current system — 6 minutes
         </span>
         <ArrowRight className="h-4 w-4 shrink-0 text-brand transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
       </Link>

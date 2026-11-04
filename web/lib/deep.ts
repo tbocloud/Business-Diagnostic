@@ -1,5 +1,5 @@
 import { type FormAnswers, type FormCtx, type FormSection, num, picked, rupees, visibleFields } from './forms';
-import type { ServiceId } from './types';
+import type { IndustryId, ServiceId } from './types';
 
 // ─────────────────────────────────────────────────────────────
 // STAGE 2 — "Your real numbers". Taken after Stage 1, with the business's own figures:
@@ -127,6 +127,8 @@ export interface DeepProfit {
   net?: number;
   netPct?: number;
   breakEven?: number;
+  /** A healthy net margin for this kind of business (%), for comparison. */
+  healthyPct: number;
   /** Where every ₹100 of sales goes. */
   split: { label: string; amount: number; tone: 'cost' | 'profit' | 'loss' }[];
 }
@@ -138,6 +140,8 @@ export interface GrowthLever {
   amount: number;
   per: 'month' | 'once';
   note: string;
+  /** One concrete thing to do this month. */
+  firstStep: string;
   service: ServiceId;
 }
 
@@ -175,7 +179,10 @@ export interface DeepResults {
 const band = (n: number, limits: [number, number, number]): StageLevel => (n < limits[0] ? 1 : n < limits[1] ? 2 : n < limits[2] ? 3 : 4);
 const pct = (n: number) => `${Math.round(n * 10) / 10}%`;
 
-export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResults {
+/** Industries where a thin margin per sale is normal (same as Stage 1's profit question). */
+const LOW_MARGIN: IndustryId[] = ['retail', 'food', 'trading', 'manufacturing', 'construction'];
+
+export function computeDeep(answers: FormAnswers, stage1: FormAnswers, industry?: IndustryId): DeepResults {
   const ctx: FormCtx = { answers, stage1 };
   const v = (id: string) => num(answers, id);
   const s1 = (id: string) => num(stage1, id);
@@ -245,6 +252,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
       net,
       netPct: net !== undefined ? per100(net) : undefined,
       breakEven: gm && gm > 0 && knownCosts ? fixed / gm : undefined,
+      healthyPct: industry && LOW_MARGIN.includes(industry) ? 8 : 15,
       split,
     };
   }
@@ -311,6 +319,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
       amount: (enquiries / 10) * saleValue,
       per: 'month',
       note: `${Math.round(enquiries / 10)} more sales a month from the enquiries you already get — mostly by replying fast and following up.`,
+      firstStep: 'Reply to every enquiry within an hour, and follow up twice: the next day, and again 3–4 days later.',
       service: 'ai',
     });
   }
@@ -324,6 +333,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
       note: priceOld
         ? 'You haven’t raised prices in over a year, while your costs have gone up. Almost all of this is extra profit.'
         : 'Almost all of this is extra profit — start with the products or customers where you are cheapest.',
+      firstStep: 'Pick your 10 best-selling items and raise them by 5% from the 1st of next month.',
       service: 'erp',
     });
     if (direct !== undefined && direct > 2) {
@@ -333,6 +343,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
         amount: sales * 0.02,
         per: 'month',
         note: 'Through better purchase prices, less waste and less dead stock — straight to profit.',
+        firstStep: 'Get two fresh quotes for your five biggest purchase items before the next order.',
         service: 'erp',
       });
     }
@@ -344,6 +355,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
         amount: sales * 0.1,
         per: 'month',
         note: `Repeat customers bring ${pct(repeat)} of sales today. Planned reminders and offers can add about 10% more.`,
+        firstStep: 'Message every customer who hasn’t bought in 60 days with a personal reason to come back.',
         service: 'marketing',
       });
     }
@@ -355,6 +367,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
       amount: (lost / 2) * customers.perCustomer,
       per: 'month',
       note: `You lost about ${lost} regular customers last year. Keeping half of them is worth this much in sales every month.`,
+      firstStep: 'Call five regulars who stopped buying and ask what changed — then fix the most common reason.',
       service: 'marketing',
     });
   }
@@ -365,6 +378,7 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers): DeepResu
       amount: receivable - sales,
       per: 'once',
       note: 'Cash that comes back into the business once — without selling a rupee more.',
+      firstStep: 'Send a statement to every customer over 30 days, and call the ten biggest this week.',
       service: 'erp',
     });
   }

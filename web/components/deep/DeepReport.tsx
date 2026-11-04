@@ -3,7 +3,10 @@
 import clsx from 'clsx';
 import { ServiceChip } from '@/components/results/ServiceChip';
 import { CheckContact, Notes, ReportSection, ReportTitle, Tile, TileGrid } from '@/components/forms/ReportFrame';
+import { Icon } from '@/components/Icon';
 import { ButtonLink } from '@/components/ui/Button';
+import { BRAND } from '@/lib/brand';
+import type { ServiceId } from '@/lib/types';
 import { type DeepProfit, type DeepResults, STAGE_LABELS, type StageLevel } from '@/lib/deep';
 import { rupees } from '@/lib/forms';
 
@@ -27,6 +30,8 @@ export function DeepReport({
         title={businessName || 'Your business'}
         lead="Worked out from your own figures — rough numbers are fine, the direction is what matters."
       />
+
+      {!nothing && <KeyStrip r={r} />}
 
       {nothing && (
         <p className="mt-10 rounded-2xl border border-line bg-card px-5 py-6 text-[15px] text-ink-2">
@@ -68,8 +73,8 @@ export function DeepReport({
                 icon="PiggyBank"
                 label={r.profit.net >= 0 ? 'Profit left each month' : 'Loss each month'}
                 big={rupees(r.profit.net)}
-                note={`${pct(r.profit.netPct!)} of sales${r.profit.netPct! < 5 ? ' — thin: one bad month wipes it out' : ''}`}
-                tone={r.profit.netPct! >= 10 ? 'good' : r.profit.netPct! >= 0 ? 'warn' : 'gap'}
+                note={`${pct(r.profit.netPct!)} of sales · healthy for your kind of business: ${r.profit.healthyPct}% or more`}
+                tone={r.profit.netPct! >= r.profit.healthyPct ? 'good' : r.profit.netPct! >= 0 ? 'warn' : 'gap'}
               />
             )}
             {r.profit.breakEven !== undefined && (
@@ -111,19 +116,21 @@ export function DeepReport({
         </ReportSection>
       )}
 
+      {r.levers.length > 0 && <NinetyDays r={r} />}
+
       {r.customers && (
         <ReportSection id="deep-customers" eyebrow="Your customers" title="How good are your customers?">
           <TileGrid>
             {r.customers.active !== undefined && <Tile icon="Users" label="Customers in the last 3 months" big={r.customers.active.toLocaleString('en-IN')} />}
             {r.customers.good !== undefined && (
-              <Tile icon="UserCheck" label="Good customers" big={`${r.customers.good} in 10`} note="come back, pay on time, don’t haggle hard" tone={r.customers.good >= 7 ? 'good' : r.customers.good >= 4 ? 'warn' : 'gap'} />
+              <Tile icon="UserCheck" label="Good customers" big={`${r.customers.good} in 10`} note="come back, pay on time, don’t haggle hard · aim: 6 or more" tone={r.customers.good >= 6 ? 'good' : r.customers.good >= 4 ? 'warn' : 'gap'} />
             )}
             {r.customers.perCustomer !== undefined && <Tile icon="IndianRupee" label="Sales per customer" big={rupees(r.customers.perCustomer)} note="a month, on average" />}
             {r.customers.top10 !== undefined && (
-              <Tile icon="Target" label="Sales from your top 10 customers" big={pct(r.customers.top10)} tone={r.customers.top10 >= 50 ? 'gap' : r.customers.top10 >= 30 ? 'warn' : 'good'} />
+              <Tile icon="Target" label="Sales from your top 10 customers" big={pct(r.customers.top10)} note="aim: under 30%, so no few customers can sink you" tone={r.customers.top10 >= 50 ? 'gap' : r.customers.top10 >= 30 ? 'warn' : 'good'} />
             )}
             {r.customers.churnPct !== undefined && (
-              <Tile icon="UserMinus" label="Regular customers lost in a year" big={pct(r.customers.churnPct)} tone={r.customers.churnPct >= 20 ? 'gap' : r.customers.churnPct >= 10 ? 'warn' : 'good'} />
+              <Tile icon="UserMinus" label="Regular customers lost in a year" big={pct(r.customers.churnPct)} note="aim: under 10%" tone={r.customers.churnPct >= 20 ? 'gap' : r.customers.churnPct >= 10 ? 'warn' : 'good'} />
             )}
           </TileGrid>
           <Notes notes={r.customers.notes} />
@@ -138,7 +145,7 @@ export function DeepReport({
                 icon="CalendarClock"
                 label="Customers owe you"
                 big={rupees(r.cash.receivable)}
-                note={r.cash.receivableDays !== undefined ? `about ${Math.round(r.cash.receivableDays)} days of sales` : undefined}
+                note={r.cash.receivableDays !== undefined ? `about ${Math.round(r.cash.receivableDays)} days of sales · aim: under 30` : undefined}
                 tone={r.cash.receivableDays === undefined ? 'neutral' : r.cash.receivableDays <= 30 ? 'good' : r.cash.receivableDays <= 60 ? 'warn' : 'gap'}
               />
             )}
@@ -148,7 +155,7 @@ export function DeepReport({
                 icon="Clock"
                 label="Your cash covers"
                 big={`${Math.round(r.cash.runwayMonths * 10) / 10} months`}
-                note="of costs, if sales stopped"
+                note="of costs, if sales stopped · aim: 3 months"
                 tone={r.cash.runwayMonths >= 3 ? 'good' : r.cash.runwayMonths >= 1 ? 'warn' : 'gap'}
               />
             )}
@@ -156,6 +163,8 @@ export function DeepReport({
           <Notes notes={r.cash.notes} />
         </ReportSection>
       )}
+
+      {r.levers.length > 0 && <HowWeHelp r={r} />}
 
       {own && (
         <>
@@ -226,3 +235,85 @@ function SplitBar({ split }: { split: DeepProfit['split'] }) {
   );
 }
 
+
+/** The four numbers that matter most, before the detail. */
+function KeyStrip({ r }: { r: DeepResults }) {
+  const items = [
+    r.stage && { icon: 'Compass', label: 'Your stage', big: r.stage.label, note: r.stage.holdingBack ? `held back by ${r.stage.holdingBack.label.toLowerCase()}` : `stage ${r.stage.level} of 4` },
+    r.profit?.net !== undefined && {
+      icon: 'PiggyBank',
+      label: r.profit.net >= 0 ? 'Profit a month' : 'Loss a month',
+      big: rupees(r.profit.net),
+      note: `${pct(r.profit.netPct!)} of sales`,
+    },
+    r.levers[0] && { icon: 'TrendingUp', label: 'Your biggest idea', big: `+${rupees(r.levers[0].amount)}`, note: r.levers[0].title.toLowerCase() },
+    r.cash?.receivable !== undefined && { icon: 'CalendarClock', label: 'Stuck with customers', big: rupees(r.cash.receivable), note: r.cash.receivableDays ? `${Math.round(r.cash.receivableDays)} days of sales` : 'owed to you' },
+  ].filter(Boolean) as { icon: string; label: string; big: string; note: string }[];
+  if (!items.length) return null;
+  return (
+    <ul aria-label="Key numbers" className="print-avoid-break mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-line bg-line lg:grid-cols-4">
+      {items.map((i) => (
+        <li key={i.label} className="bg-card px-4 py-5 sm:px-6">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-ink-2">
+            <Icon name={i.icon} className="h-4 w-4 text-brand" />
+            {i.label}
+          </p>
+          <p className="font-display mt-2 text-[24px] font-medium leading-tight tracking-[-0.01em] text-ink sm:text-[30px]">{i.big}</p>
+          <p className="mt-1 text-[12.5px] leading-snug text-muted">{i.note}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Three months, one idea each, with the first step to take. */
+function NinetyDays({ r }: { r: DeepResults }) {
+  const once = r.levers.filter((l) => l.per === 'once');
+  const monthly = r.levers.filter((l) => l.per === 'month');
+  // Cash first (it pays for the rest), then the ideas worth most a month.
+  const plan = [...once, ...monthly].slice(0, 3);
+  return (
+    <ReportSection id="deep-plan" eyebrow="Your next 90 days" title="One idea a month, starting now" lead="Do these in order — each one pays for the next.">
+      <ol className="grid gap-3 lg:grid-cols-3">
+        {plan.map((l, i) => (
+          <li key={l.id} className="flex flex-col rounded-[18px] border border-line bg-card px-5 py-5 shadow-card">
+            <p className="eyebrow text-brand">Month {i + 1}</p>
+            <p className="font-display mt-1.5 text-[18px] font-medium leading-snug text-ink">{l.title}</p>
+            <p className="mt-2 text-[14px] leading-relaxed text-ink-2">
+              <strong className="font-semibold text-ink">First step:</strong> {l.firstStep}
+            </p>
+            <p className="mt-auto pt-3 text-[13px] font-semibold text-ok-ink">
+              Worth +{rupees(l.amount)} {l.per === 'month' ? 'a month' : 'once'}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </ReportSection>
+  );
+}
+
+/** Which of our services carry which idea. */
+function HowWeHelp({ r }: { r: DeepResults }) {
+  const by = new Map<ServiceId, string[]>();
+  for (const l of r.levers) by.set(l.service, [...(by.get(l.service) ?? []), l.title]);
+  return (
+    <ReportSection id="deep-help" eyebrow="How we help" title="Who does the heavy lifting">
+      <ul className="grid gap-3 md:grid-cols-3">
+        {[...by.entries()].map(([id, titles]) => (
+          <li key={id} className="rounded-[18px] border border-line bg-card px-5 py-5 shadow-card">
+            <ServiceChip id={id} />
+            <p className="mt-3 text-[14px] leading-relaxed text-ink-2">{BRAND.services[id].pitch}</p>
+            <ul className="mt-3 space-y-1.5">
+              {titles.map((t) => (
+                <li key={t} className="flex gap-2 text-[13.5px] text-ink">
+                  <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </ReportSection>
+  );
+}

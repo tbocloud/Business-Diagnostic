@@ -22,9 +22,9 @@ export function NextChecks() {
         <NextCard
           href="/erp"
           Icon={Boxes}
-          eyebrow="ERP check · about 5 minutes"
-          title="Are you ready for an ERP?"
-          body="What you use today, what slows you down, and which ERP modules would help first — with a simple readiness score."
+          eyebrow="ERP check · about 6 minutes"
+          title="Find your ERP gaps"
+          body="Where your current system leaves work to people — accounts, stock, billing, purchase, payroll — the hours it costs, and what ERPNext fixes first."
         />
       </div>
     </section>
