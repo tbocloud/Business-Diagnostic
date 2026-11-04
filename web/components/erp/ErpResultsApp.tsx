@@ -1,81 +1,132 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { EmptyState } from '@/components/results/EmptyState';
-import { PageSkeleton } from '@/components/ui/Skeleton';
-import { ReportFrame } from '@/components/forms/ReportFrame';
+import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import { CheckCallback } from '@/components/forms/CheckCallback';
+import { CheckReportPage, CheckReportState } from '@/components/forms/CheckReportPage';
+import { useSharedCheck } from '@/components/forms/useSharedCheck';
+import { NextChecks } from '@/components/results/NextChecks';
+import { ButtonLink } from '@/components/ui/Button';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
-import { publicApi } from '@/lib/api';
-import { cleanFormAnswers } from '@/lib/checks';
-import { computeErp } from '@/lib/erp';
-import { useErp } from '@/lib/forms';
+import { checkShareUrl } from '@/lib/checkShare';
+import { computeErp, erpProfileFrom, erpReport, erpToSave } from '@/lib/erp';
+import { useDeep, useErp } from '@/lib/forms';
 import { useCheck } from '@/lib/store';
-import { ErpReport } from './ErpReport';
+import { ErpExtras } from './ErpExtras';
 
-type Shared = { state: 'none' } | { state: 'loading' } | { state: 'invalid' } | { state: 'ok'; answers: ReturnType<typeof cleanFormAnswers>; name: string };
+const EMPTY = {
+  title: 'No ERP check report yet',
+  body: 'Answer the ERP check questions — about 6 minutes — and your report appears here: every gap in your current system and what ERPNext fixes first.',
+  cta: { href: '/erp', label: 'Start the ERP check' },
+};
 
-/** The client’s own ERP check report, or one opened from its link (/erp/results/#id=…&k=…, e.g. from the CRM). */
+/** The client’s own ERP check report, or one opened from a link (#r=… share link, or #id=…&k=… from the CRM). */
 export function ErpResultsApp() {
+  const router = useRouter();
   const hydrated = useHasHydrated();
+  const shared = useSharedCheck('erp');
   const answers = useErp((s) => s.answers);
   const completedAt = useErp((s) => s.completedAt);
-  const submissionId = useErp((s) => s.submissionId);
-  const token = useErp((s) => s.submissionToken);
-  const ownName = useErp((s) => s.details.businessName);
-  const stage1Name = useCheck((s) => s.profile.businessName);
+  const details = useErp((s) => s.details);
   const profile = useCheck((s) => s.profile);
-  const name = ownName || stage1Name;
-  const [shared, setShared] = useState<Shared>({ state: 'none' });
+  const stage1Done = useCheck((s) => !!s.completedAt);
+  const deepDone = useDeep((s) => !!s.completedAt);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const id = params.get('id');
-    const k = params.get('k');
-    if (!id || !k) return;
-    setShared({ state: 'loading' });
-    publicApi
-      .report(id, k)
-      .then((d) => {
-        if (d.kind !== 'erp') return setShared({ state: 'invalid' });
-        const details = (d.details ?? {}) as { company?: unknown };
-        setShared({ state: 'ok', answers: cleanFormAnswers(d.answers), name: typeof details.company === 'string' ? details.company : '' });
-      })
-      .catch(() => setShared({ state: 'invalid' }));
-  }, []);
+  const view = useMemo(() => {
+    if (shared.state === 'ok') {
+      const c = shared.check;
+      return { ...erpReport(c.answers, erpProfileFrom(c.answers), c.businessName), saved: c.answers, name: c.businessName, ownerName: c.ownerName, completedAt: c.completedAt };
+    }
+    const name = details.businessName.trim() || profile.businessName.trim();
+    return {
+      ...erpReport(answers, profile, name),
+      saved: erpToSave(answers, profile),
+      name,
+      ownerName: details.ownerName.trim() || profile.ownerName?.trim() || '',
+      completedAt,
+    };
+  }, [shared, answers, details, profile, completedAt]);
 
-  const results = useMemo(() => {
-    if (shared.state === 'ok') return computeErp(shared.answers);
-    return computeErp(answers, profile);
-  }, [shared, answers, profile]);
+  if (!hydrated || shared.state === 'loading') return <CheckReportState state="loading" empty={EMPTY} />;
+  if (shared.state === 'invalid') return <CheckReportState state="invalid" empty={EMPTY} />;
+  const isShared = shared.state === 'ok';
+  if (!isShared && !completedAt && view.erp.answered === 0) return <CheckReportState state="empty" empty={EMPTY} />;
 
-  if (!hydrated || shared.state === 'loading') {
-    return (
-      <ReportFrame>
-        <PageSkeleton variant="report" />
-      </ReportFrame>
-    );
-  }
-  if (shared.state === 'invalid') {
-    return (
-      <ReportFrame>
-        <EmptyState title="This report link doesn’t work" body="It may be incomplete. Ask whoever sent it for the full link." cta={{ href: '/', label: 'Go to the start' }} />
-      </ReportFrame>
-    );
-  }
-  if (shared.state === 'none' && !completedAt) {
-    return (
-      <ReportFrame>
-        <EmptyState title="No ERP check report yet" body="Answer the ERP check questions and your report appears here." cta={{ href: '/erp', label: 'Start the ERP check' }} />
-      </ReportFrame>
-    );
-  }
+  const { results, erp } = view;
+  const chips = [
+    results.industryLabel !== 'Not specified' && { label: 'Industry', value: results.industryLabel },
+    erp.current && { label: 'Today on', value: erp.current.label },
+    erp.size.users !== undefined && { label: 'Users', value: String(erp.size.users) },
+    erp.size.sites !== undefined && { label: erp.size.sites === 1 ? 'Location' : 'Locations', value: String(erp.size.sites) },
+  ].filter(Boolean) as { label: string; value: string }[];
+  const next: ('health' | 'deep')[] = stage1Done ? (deepDone ? [] : ['deep']) : ['health'];
+
   return (
-    <ReportFrame>
-      <ErpReport
-        results={results}
-        businessName={shared.state === 'ok' ? shared.name : name}
-        own={shared.state === 'none' ? { submissionId, token } : undefined}
-      />
-    </ReportFrame>
+    <CheckReportPage
+      eyebrow="ERP check"
+      results={results}
+      ownerName={view.ownerName}
+      completedAt={view.completedAt}
+      isShared={isShared}
+      unfinished={
+        !isShared && !completedAt
+          ? { href: '/erp', label: 'Continue the check', text: 'Your ERP check isn’t finished, so this report only covers what you’ve answered so far.' }
+          : undefined
+      }
+      chips={chips}
+      extraAfterPlan={<ErpExtras erp={erp} />}
+      teaser="Key points, the real gap in your system, every gap with what ERPNext does about it, your 7 / 30 / 90-day plan and your ERPNext plan."
+      getShareUrl={() => checkShareUrl('erp', { answers: view.saved, businessName: view.name, ownerName: view.ownerName, completedAt: view.completedAt })}
+      onEdit={() => {
+        useErp.getState().goTo(0);
+        router.push('/erp');
+      }}
+      onReset={() => {
+        useErp.getState().reset();
+        router.push('/erp');
+      }}
+      callback={
+        isShared ? undefined : (
+          <CheckCallback
+            kind="erp"
+            useStore={useErp}
+            points={() => computeErp(useErp.getState().answers, profile).points}
+            answers={() => erpToSave(useErp.getState().answers, profile)}
+            businessName={results.businessName}
+            ownerName={view.ownerName}
+            title="See ERPNext close these gaps — on your own data"
+            body="Leave a number and we’ll book a free demo of your Phase 1 modules, with your own items, customers and invoices. No obligation."
+          />
+        )
+      }
+      next={
+        isShared ? undefined : (
+          <NextChecks
+            show={next}
+            title={next.length ? 'Keep going' : 'Your other reports'}
+            lead={
+              !stage1Done
+                ? 'Your system is one part of the picture. See the whole business in about 10 minutes.'
+                : next.length
+                  ? 'Your answers carry over — nothing is asked twice.'
+                  : 'Everything you’ve told us, report by report.'
+            }
+          >
+            {stage1Done && (
+              <>
+                <ButtonLink href="/results" variant="secondary">
+                  Your Stage 1 report
+                </ButtonLink>
+                {deepDone && (
+                  <ButtonLink href="/deep/results" variant="secondary">
+                    Your Stage 2 report
+                  </ButtonLink>
+                )}
+              </>
+            )}
+          </NextChecks>
+        )
+      }
+    />
   );
 }

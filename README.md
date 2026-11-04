@@ -141,7 +141,9 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 |---|---|---|
 | **Stage 1** — the Business Health Check | `/check/` → `/results/` | Multiple-choice and number questions in 8 areas, the last step, and the report |
 | **Stage 2** — your real numbers | `/deep/` → `/deep/results/`, offered on the Stage 1 report | The business's own figures: the stage it is really at and what holds it there, profit and break-even, growth ideas worth rupees, customer quality, cash. Stage 1 answers carry over |
-| **ERP check** | `/erp/` → `/erp/results/`, from the start page ("Only looking at ERP?") or after Stage 1 | What they use today and what slows them down, size, modules, readiness — with a verdict, Phase 1/2 modules and a rough timeline |
+| **ERP check** | `/erp/` → `/erp/results/`, from the start page ("Only looking at ERP?") or after Stage 1 | The gaps their current system leaves in accounts & GST, billing, stock, purchase, production, payroll and control — the hours they cost, and the ERPNext plan (Phase 1/2 modules, rough timeline) |
+
+**All three reports look and work the same.** Stage 2 and the ERP check turn their scored answers into the same `Results` as Stage 1 (`web/lib/reportKit.ts`: `deepReport()` in `deep.ts`, `erpReport()` in `erp.ts`), so they get the Stage 1 report: score, areas with "What to do", key points, the real gap, strengths and gaps, the 7 / 30 / 90-day plan, "How we help", the callback form, PDF and a share link (`#r=…`, `web/lib/checkShare.ts`). Each adds its own sections: Stage 2 its stage, where every ₹100 goes and growth ideas in rupees; the ERP check its ERPNext plan.
 
 Stage 2 and the ERP check are saved by `api/submit-check.php` (`check_type` `deep` / `erp`, joined to the Stage 1 check on the same device). They stay out of the BDE panel: the team sees them on the CRM record (report link + summary each).
 

@@ -13,21 +13,21 @@ interface Payload {
   t?: string; // completedAt
 }
 
-function toBase64Url(s: string): string {
+export function toBase64Url(s: string): string {
   const bytes = new TextEncoder().encode(s);
   let bin = '';
   bytes.forEach((b) => (bin += String.fromCharCode(b)));
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function fromBase64Url(s: string): string {
+export function fromBase64Url(s: string): string {
   const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4);
   const bin = atob(b64);
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
 /** Drop empty/skipped answers to keep links short. */
-function compact(answers: Answers): Answers {
+export function compactAnswers(answers: Answers): Answers {
   const out: Answers = {};
   for (const [id, a] of Object.entries(answers)) {
     if (a.skipped) out[id] = { selected: [], skipped: true };
@@ -38,7 +38,7 @@ function compact(answers: Answers): Answers {
 }
 
 export function encodeResults(profile: Profile, answers: Answers, completedAt?: string): string {
-  const payload: Payload = { v: 1, p: profile, a: compact(answers), ...(completedAt ? { t: completedAt } : {}) };
+  const payload: Payload = { v: 1, p: profile, a: compactAnswers(answers), ...(completedAt ? { t: completedAt } : {}) };
   return toBase64Url(JSON.stringify(payload));
 }
 

@@ -1,5 +1,7 @@
 import { type FormAnswers, type FormCtx, type FormSection, num, picked, rupees, visibleFields } from './forms';
-import type { IndustryId, ServiceId } from './types';
+import { INDUSTRIES } from './profile';
+import { buildResults, type KitArea, type KitFinding } from './reportKit';
+import type { IndustryId, NumberFact, Results, ServiceId } from './types';
 
 // ─────────────────────────────────────────────────────────────
 // STAGE 2 — "Your real numbers". Taken after Stage 1, with the business's own figures:
@@ -420,15 +422,338 @@ export function computeDeep(answers: FormAnswers, stage1: FormAnswers, industry?
 const FROM_STAGE1 = ['sales_enquiries', 'sales_convert', 'sales_repeat', 'mkt_spend'];
 
 /** Stage 2 answers plus the Stage 1 figures it uses, for saving. */
-export function withStage1(answers: FormAnswers, stage1: FormAnswers): FormAnswers {
+export function withStage1(answers: FormAnswers, stage1: FormAnswers, industry?: IndustryId): FormAnswers {
   const out: FormAnswers = { ...answers };
   for (const id of FROM_STAGE1) if (stage1[id] && typeof stage1[id].value === 'number') out[`s1.${id}`] = stage1[id];
+  // The industry sets the healthy profit level, so a shared report needs it too.
+  if (industry) out['s1.industry'] = { selected: [industry] };
   return out;
+}
+
+/** The industry saved with a Stage 2 report (see withStage1). */
+export function industryFrom(answers: FormAnswers): IndustryId | undefined {
+  const id = answers['s1.industry']?.selected[0];
+  return INDUSTRIES.some((i) => i.id === id) ? (id as IndustryId) : undefined;
 }
 
 /** The Stage 1 figures saved with a Stage 2 report (see withStage1). */
 export function stage1From(answers: FormAnswers): FormAnswers {
   const out: FormAnswers = {};
   for (const id of FROM_STAGE1) if (answers[`s1.${id}`]) out[id] = answers[`s1.${id}`];
+  return out;
+}
+
+// ── The report, like Stage 1's ──────────────────────────────
+
+const DEEP_AREAS: KitArea[] = [
+  { id: 'systems', title: 'Stage & systems', short: 'Systems', icon: 'Compass', rootNote: 'Work that lives in people’s heads and sheets can’t grow beyond the people who keep it — that is what holds a business at its stage.' },
+  { id: 'profit', title: 'Profit', short: 'Profit', icon: 'PiggyBank', rootNote: 'Sales pay the bills only if enough is left over — thin profit makes every slow month a crisis.' },
+  { id: 'growth', title: 'Sales & growth', short: 'Growth', icon: 'TrendingUp', rootNote: 'Costs rise every year; when sales don’t, profit quietly shrinks.' },
+  { id: 'customers', title: 'Customers', short: 'Customers', icon: 'Users', rootNote: 'The quality of your customers decides your margin, your cash and how much chasing your team does.' },
+  { id: 'cash', title: 'Cash', short: 'Cash', icon: 'Wallet', rootNote: 'Profit on paper is not money in the bank — cash stuck with customers or too thin a cushion turns small problems into big ones.' },
+];
+
+const bandUp = (n: number, bands: [number, number][], below: number) => {
+  for (const [min, score] of bands) if (n >= min) return score;
+  return below;
+};
+const bandDown = (n: number, bands: [number, number][], above: number) => {
+  for (const [max, score] of bands) if (n <= max) return score;
+  return above;
+};
+
+/** Stage 2 as a Stage 1-style report: each figure scored against a healthy level for the business. */
+export function deepReport(answers: FormAnswers, stage1: FormAnswers, industry?: IndustryId, businessName = ''): { results: Results; deep: DeepResults } {
+  const d = computeDeep(answers, stage1, industry);
+  const v = (id: string) => num(answers, id);
+  const s1 = (id: string) => num(stage1, id);
+  const out: KitFinding[] = [];
+  const add = (f: KitFinding) => out.push(f);
+
+  const systems = answers.deep_systems;
+  if (systems && !systems.skipped && systems.selected.length) {
+    const count = systems.selected.filter((x) => x !== 'none').length;
+    add({
+      questionId: 'deep_systems',
+      area: 'systems',
+      score: [10, 20, 45, 70, 85, 100][count] ?? 100,
+      weight: 3,
+      answerLabel: `${count} of 5 run on software`,
+      strength: 'Daily work runs on proper systems',
+      gap: 'Too much runs on paper, sheets and memory',
+      why: d.stage?.holdingBack?.label === 'Systems' ? d.stage.holdingBack.note : 'Work kept in heads and sheets is typed twice, gets lost, and can’t grow beyond the people who keep it.',
+      fix: 'Pick the one job that causes the most re-typing — usually billing with stock — and move it onto software first.',
+      steps: ['Keep one list of customers and one of items, shared by everyone.', 'Bring accounts, billing and stock into one system.'],
+      effort: 'big',
+      solution: { services: ['erp'], text: 'ERPNext puts accounts, billing, stock, purchase and payroll in one system — the base a business needs for its next stage.' },
+    });
+  }
+
+  const p = d.profit;
+  if (p?.netPct !== undefined && p.net !== undefined) {
+    const h = p.healthyPct;
+    add({
+      questionId: 'deep_net',
+      area: 'profit',
+      score: p.netPct >= h ? 100 : p.netPct >= h * 0.75 ? 60 : p.netPct >= h * 0.4 ? 40 : p.netPct >= 0 ? 25 : 5,
+      weight: 3,
+      answerLabel: `${Math.round(p.netPct * 10) / 10}% of sales left as profit (${rupees(p.net)} a month)`,
+      strength: 'Healthy profit on every sale',
+      gap: p.netPct < 0 ? 'The business is making a loss' : 'Too little is left as profit',
+      why: `Healthy for your kind of business is ${h}% or more. With a thin margin, one bad month, a price rise or a late payer wipes the profit out.`,
+      fix: 'Find your three lowest-margin products or customers this month, and reprice or drop them.',
+      steps: ['Raise prices where you haven’t for over a year.', 'Check your margin every month, by product and by customer.'],
+      effort: 'medium',
+      solution: { services: ['erp'], text: 'ERPNext shows real profit by product, customer and branch — so you see where money is made and where it is lost.' },
+    });
+  }
+  if (p?.breakEven !== undefined && p.breakEven > 0) {
+    const cushion = (p.sales - p.breakEven) / p.breakEven;
+    add({
+      questionId: 'deep_breakeven',
+      area: 'profit',
+      score: bandUp(cushion, [[0.25, 100], [0.15, 60], [0.05, 40], [0, 30]], 5),
+      answerLabel: `break-even at ${rupees(p.breakEven)} a month; sales ${rupees(p.sales)}`,
+      strength: 'Comfortably above break-even',
+      gap: cushion < 0 ? 'Sales are below break-even' : 'Too close to break-even',
+      why: 'A small drop in sales takes you into a loss — there is little room for a slow month.',
+      fix: 'List your fixed costs and cut or renegotiate the biggest one.',
+      steps: ['Push the products with the best margin first.', 'Review fixed costs every quarter, not once a year.'],
+      effort: 'medium',
+      solution: { services: ['erp'], text: 'ERPNext tracks costs against a budget every month, so creeping costs show up early.' },
+    });
+  }
+
+  const growth = v('deep_growth');
+  if (growth !== undefined) {
+    add({
+      questionId: 'deep_growth',
+      area: 'growth',
+      score: bandUp(growth, [[15, 100], [5, 75], [0, 45]], 10),
+      answerLabel: `${growth >= 0 ? '+' : ''}${growth}% vs last year`,
+      strength: 'Sales are growing',
+      gap: growth < 0 ? 'Sales are falling' : 'Sales are flat',
+      why: 'Costs rise every year; flat sales mean shrinking profit.',
+      fix: 'Pick one growth idea from this report and give it a monthly target.',
+      steps: ['Win back past customers with a planned offer.', 'Put a little budget into the channel that brings your best customers.'],
+      effort: 'medium',
+      solution: { services: ['marketing'], text: 'Digital marketing — Google, social media and WhatsApp campaigns — brings in new customers and brings past ones back.' },
+    });
+  }
+  const convert = v('deep_convert') ?? s1('sales_convert');
+  if (convert !== undefined) {
+    add({
+      questionId: 'deep_convert',
+      area: 'growth',
+      score: bandUp(convert, [[6, 100], [4, 80], [3, 60], [2, 40], [1, 20]], 5),
+      answerLabel: `${convert} in 10 enquiries buy`,
+      strength: 'A healthy share of enquiries buy',
+      gap: 'Most enquiries never buy',
+      why: 'Every enquiry has already cost time or money — winning one more in ten is usually cheaper than finding more.',
+      fix: 'Reply to every enquiry within an hour, and follow up twice: the next day and 3–4 days later.',
+      steps: ['Ask the last five people who didn’t buy why not.', 'Keep every enquiry in one list with its next follow-up date.'],
+      effort: 'quick',
+      solution: { services: ['ai', 'erp'], text: 'An AI assistant replies instantly on WhatsApp and your website; the ERP’s CRM reminds your team to follow up.' },
+    });
+  }
+  const price = picked(answers, 'deep_price')[0];
+  if (price) {
+    add({
+      questionId: 'deep_price',
+      area: 'growth',
+      score: ({ recent: 100, year: 75, old: 30, never: 10 } as Record<string, number>)[price] ?? 50,
+      answerLabel: DEEP_SECTIONS.flatMap((s) => s.fields).find((f) => f.id === 'deep_price')?.options?.find((o) => o.id === price)?.label ?? price,
+      strength: 'Prices keep up with costs',
+      gap: 'Prices haven’t kept up with costs',
+      why: 'Your costs rise every year; prices that don’t move quietly eat into the profit.',
+      fix: 'Raise your 10 best-selling items by 5% from the 1st of next month.',
+      steps: ['Raise prices a little every year, instead of a lot at once.', 'Price new work from real costs, not last year’s list.'],
+      effort: 'quick',
+      solution: { services: ['erp'], text: 'ERPNext shows the real cost of every item, so price rises are based on facts, not guesses.' },
+    });
+  }
+
+  const c = d.customers;
+  if (c?.good !== undefined) {
+    add({
+      questionId: 'deep_good',
+      area: 'customers',
+      score: bandUp(c.good, [[6, 100], [4, 60], [2, 30]], 10),
+      weight: 3,
+      answerLabel: `${c.good} in 10 are good customers`,
+      strength: 'Most of your customers are good ones',
+      gap: 'Too few of your customers are good ones',
+      why: 'Customers who haggle, pay late and buy once cost time and margin; the good ones pay for the business.',
+      fix: 'List your 20 best customers and what they have in common — then look for more like them.',
+      steps: ['Stop chasing one-off, low-margin buyers.', 'Give good customers a reason to stay: priority, terms, offers.'],
+      effort: 'medium',
+      solution: { services: ['marketing', 'erp'], text: 'Targeted digital marketing finds more customers like your best ones; the ERP’s CRM shows exactly who they are.' },
+    });
+  }
+  if (c?.top10 !== undefined) {
+    add({
+      questionId: 'deep_top10',
+      area: 'customers',
+      score: bandDown(c.top10, [[30, 100], [50, 60], [70, 30]], 10),
+      answerLabel: `top 10 customers = ${c.top10}% of sales`,
+      strength: 'Sales are well spread',
+      gap: 'Too much rests on a few customers',
+      why: 'When ten customers bring most of the sales, losing one hurts badly — and they set your prices.',
+      fix: 'Set a target to win three new mid-size customers this quarter.',
+      steps: ['Agree written terms with your biggest customers.', 'Track each customer’s share of sales every month.'],
+      effort: 'big',
+      solution: { services: ['marketing'], text: 'Digital marketing — Google, LinkedIn and targeted campaigns — brings in new customers like your best ones, so you aren’t tied to a few.' },
+    });
+  }
+  if (c?.churnPct !== undefined) {
+    add({
+      questionId: 'deep_lost',
+      area: 'customers',
+      score: bandDown(c.churnPct, [[10, 100], [20, 60], [35, 30]], 10),
+      answerLabel: `${Math.round(c.churnPct)}% of regular customers lost in a year`,
+      strength: 'Regular customers stay',
+      gap: 'Too many regular customers leave',
+      why: 'Every regular who leaves takes their monthly purchases with them — and you pay again to replace them.',
+      fix: 'Call five regulars who stopped buying and ask what changed.',
+      steps: ['Check in with each regular customer every quarter.', 'Notice when a regular hasn’t ordered for longer than usual.'],
+      effort: 'quick',
+      solution: { services: ['marketing', 'erp'], text: 'WhatsApp and email reminders bring lapsed customers back; the ERP flags regulars who haven’t ordered for a while.' },
+    });
+  }
+
+  const cash = d.cash;
+  if (cash?.receivableDays !== undefined && cash.receivable !== undefined) {
+    add({
+      questionId: 'deep_receivable',
+      area: 'cash',
+      score: bandDown(cash.receivableDays, [[30, 100], [45, 65], [60, 35]], 10),
+      weight: 3,
+      answerLabel: `${rupees(cash.receivable)} owed — about ${Math.round(cash.receivableDays)} days of sales`,
+      strength: 'Customers pay quickly',
+      gap: 'Too much of your money sits with customers',
+      why: `About ${Math.round(cash.receivableDays)} days of sales is owed to you — cash you have earned but can’t use. Aim for under 30 days.`,
+      fix: 'Send a statement to everyone over 30 days, and call the ten biggest this week.',
+      steps: ['Invoice the same day the work is done.', 'Stop new credit for customers more than 45 days overdue.'],
+      effort: 'quick',
+      solution: { services: ['erp'], text: 'ERPNext tracks who owes what with ageing, credit limits and automatic reminders.' },
+    });
+  }
+  if (cash?.runwayMonths !== undefined) {
+    add({
+      questionId: 'deep_cash',
+      area: 'cash',
+      score: bandUp(cash.runwayMonths, [[3, 100], [1.5, 65], [0.75, 35]], 10),
+      answerLabel: `cash covers ${Math.round(cash.runwayMonths * 10) / 10} months of costs`,
+      strength: 'A healthy cash cushion',
+      gap: 'Your cash cushion is thin',
+      why: 'With less than a month or two of costs in hand, one slow month or one late customer means juggling payments. Aim for 3 months.',
+      fix: 'Set aside a fixed share of every big payment you receive until you reach 3 months of costs.',
+      steps: ['Collect what you are owed before taking on new costs.', 'Plan cash every week: what comes in, what goes out.'],
+      effort: 'medium',
+      solution: { services: ['erp'], text: 'ERPNext gives you a live cash-flow view, and a forecast from what you are owed and what you owe.' },
+    });
+  }
+
+  const top = d.levers[0];
+  const results = buildResults({
+    numbers: deepNumbers(d),
+    businessName,
+    target: 70,
+    levelLabel: 'healthy',
+    industryLabel: INDUSTRIES.find((x) => x.id === industry)?.label ?? 'Not specified',
+    teamLabel: 'Not specified',
+    areas: DEEP_AREAS,
+    findings: out,
+    asked: d.asked,
+    answered: d.answered,
+    skipped: DEEP_SECTIONS.flatMap((s) => s.fields).filter((f) => answers[f.id]?.skipped).length,
+    scoreLabel: 'Overall',
+    opportunity: top
+      ? {
+          tone: 'good',
+          icon: 'TrendingUp',
+          label: 'Your biggest idea',
+          big: `+${rupees(top.amount)}${top.per === 'month' ? ' a month' : ''}`,
+          headline: top.title,
+          detail: `${top.note} First step: ${top.firstStep}`,
+          talk: 'End on the money: this one idea, worked out from their own figures.',
+        }
+      : undefined,
+  });
+  return { results, deep: d };
+}
+
+/** "Your numbers": each figure they gave, with the maths that makes it mean something. */
+function deepNumbers(d: DeepResults): NumberFact[] {
+  const out: NumberFact[] = [];
+  const p = d.profit;
+  if (p) {
+    out.push({
+      id: 'deep_sales',
+      icon: 'IndianRupee',
+      label: 'Sales a month',
+      big: rupees(p.sales),
+      note: d.growth !== undefined ? `${d.growth >= 0 ? '+' : ''}${d.growth}% on last year${d.growth < 5 ? ' — costs usually rise faster than that.' : '.'}` : 'Your starting point for every figure below.',
+      tone: d.growth === undefined ? 'neutral' : d.growth >= 10 ? 'good' : d.growth >= 0 ? 'warn' : 'gap',
+      section: 'sales',
+    });
+    if (p.net !== undefined && p.netPct !== undefined) {
+      out.push({
+        id: 'deep_net',
+        icon: 'PiggyBank',
+        label: p.net >= 0 ? 'Profit left each month' : 'Loss each month',
+        big: rupees(p.net),
+        note: `${pct(p.netPct)} of sales. Healthy for your kind of business is ${p.healthyPct}% or more.`,
+        tone: p.netPct >= p.healthyPct ? 'good' : p.netPct >= 0 ? 'warn' : 'gap',
+        section: 'finance',
+      });
+    }
+    if (p.breakEven !== undefined && p.breakEven > 0) {
+      const over = (p.sales - p.breakEven) / p.breakEven;
+      out.push({
+        id: 'deep_breakeven',
+        icon: 'Target',
+        label: 'Sales you need just to break even',
+        big: rupees(p.breakEven),
+        note:
+          over >= 0.25
+            ? `You are ${pct(over * 100)} above it — a comfortable cushion.`
+            : over >= 0
+              ? `You are ${pct(over * 100)} above it — aim for 25% or more, so a slow month doesn’t tip you into a loss.`
+              : `You are ${pct(-over * 100)} below it — every month runs at a loss.`,
+        tone: over >= 0.25 ? 'good' : over >= 0 ? 'warn' : 'gap',
+        section: 'finance',
+      });
+    }
+  }
+  const c = d.customers;
+  if (c?.good !== undefined) {
+    out.push({ id: 'deep_good', icon: 'UserCheck', label: 'Good customers', big: `${c.good} in 10`, note: 'Come back, pay on time and don’t haggle hard. Aim for 6 or more.', tone: c.good >= 6 ? 'good' : c.good >= 4 ? 'warn' : 'gap', section: 'customers' });
+  }
+  if (c?.perCustomer !== undefined) {
+    out.push({ id: 'deep_per', icon: 'Users', label: 'Sales per customer', big: `${rupees(c.perCustomer)} a month`, note: c.active !== undefined ? `Across ${c.active.toLocaleString('en-IN')} customers in the last 3 months.` : 'On average.', tone: 'neutral', section: 'customers' });
+  }
+  if (c?.top10 !== undefined) {
+    out.push({ id: 'deep_top10', icon: 'Target', label: 'Sales from your top 10 customers', big: pct(c.top10), note: c.top10 > 50 ? 'Losing one or two of them would hurt badly. Aim for under 30%.' : 'Aim for under 30%, so no few customers can sink you.', tone: c.top10 <= 30 ? 'good' : c.top10 <= 50 ? 'warn' : 'gap', section: 'customers' });
+  }
+  if (c?.churnPct !== undefined) {
+    out.push({ id: 'deep_lost', icon: 'UserMinus', label: 'Regular customers lost in a year', big: pct(c.churnPct), note: 'Each one takes their monthly purchases with them. Aim for under 10%.', tone: c.churnPct <= 10 ? 'good' : c.churnPct <= 20 ? 'warn' : 'gap', section: 'customers' });
+  }
+  const cash = d.cash;
+  if (cash?.receivable !== undefined) {
+    out.push({
+      id: 'deep_receivable',
+      icon: 'CalendarClock',
+      label: 'Customers owe you',
+      big: rupees(cash.receivable),
+      note: cash.receivableDays !== undefined ? `About ${Math.round(cash.receivableDays)} days of sales — money you’ve earned but can’t use. Aim for under 30.` : 'Money you’ve earned but can’t use yet.',
+      tone: cash.receivableDays === undefined ? 'neutral' : cash.receivableDays <= 30 ? 'good' : cash.receivableDays <= 60 ? 'warn' : 'gap',
+      section: 'finance',
+    });
+  }
+  if (cash?.runwayMonths !== undefined) {
+    const m = Math.round(cash.runwayMonths * 10) / 10;
+    out.push({ id: 'deep_runway', icon: 'Wallet', label: 'Your cash covers', big: `${m} month${m === 1 ? '' : 's'}`, note: 'Of costs, if sales stopped tomorrow. Aim for 3 months.', tone: cash.runwayMonths >= 3 ? 'good' : cash.runwayMonths >= 1 ? 'warn' : 'gap', section: 'finance' });
+  }
   return out;
 }

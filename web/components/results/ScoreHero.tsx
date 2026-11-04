@@ -10,7 +10,7 @@ export function ScoreHero({ results }: { results: Results }) {
       className="print-avoid-break print-plain grid overflow-hidden rounded-[28px] border border-line bg-card shadow-card md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] print:grid-cols-[15rem_minmax(0,1fr)]"
     >
       <div className="relative border-b border-line bg-gradient-to-b from-paper/70 to-card px-8 pb-6 pt-8 md:border-b-0 md:border-r md:px-10 md:py-10 print:border-b-0 print:border-r print:px-6 print:py-6">
-        <p className="eyebrow text-center">Overall health</p>
+        <p className="eyebrow text-center">{results.labels?.score ?? 'Overall health'}</p>
         <Gauge value={overall} target={target} className="mt-3 max-w-[290px]" />
         <p className="mt-1 text-center text-[12.5px] text-muted">
           Target {target} is the guide level for {stagePhrase(levelLabel)}.

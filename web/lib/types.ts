@@ -190,6 +190,9 @@ export interface Insight {
   weight: number;
   /** Higher = more urgent. (100 − score) × weight. */
   severity: number;
+  /** For areas that aren't Stage 1 sections (Stage 2, the ERP check): their name and icon. */
+  sectionTitle?: string;
+  sectionIcon?: string;
 }
 
 export type SectionStatus = 'healthy' | 'push' | 'priority' | 'not-assessed';
@@ -248,6 +251,8 @@ export interface ActionItem {
   section: SectionId;
   sectionTitle: string;
   effort: Effort;
+  /** Areas that aren't Stage 1 sections: their icon. */
+  sectionIcon?: string;
 }
 
 /**
@@ -317,6 +322,8 @@ export interface Results {
   realGap: RealGap | null;
   actionPlan: { week: ActionItem[]; month: ActionItem[]; quarter: ActionItem[] };
   summary: string;
+  /** Wording for Stage 2 / the ERP check (e.g. "System health", "Target"); Stage 1's when absent. */
+  labels?: { score: string; target: string };
   /** Six headline points in presentation order — for the "Key points" strip and review mode. */
   keyPoints: KeyPoint[];
   /** Overall score if every scored area reached its stage target (never below `overall`). */

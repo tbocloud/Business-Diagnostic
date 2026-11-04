@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { FormRunner } from '@/components/forms/FormRunner';
 import { ensureCheck, syncCheck } from '@/lib/checks';
-import { computeErp, ERP_SECTIONS } from '@/lib/erp';
+import { computeErp, ERP_SECTIONS, erpToSave } from '@/lib/erp';
 import { useErp } from '@/lib/forms';
 import { useCheck } from '@/lib/store';
 
@@ -19,6 +19,7 @@ export function ErpApp() {
     if (!details.ownerName && p.ownerName) setDetails({ ownerName: p.ownerName });
   }, []);
   const points = () => computeErp(useErp.getState().answers, profile).points;
+  const toSave = () => erpToSave(useErp.getState().answers, profile);
   return (
     <FormRunner
       sections={ERP_SECTIONS}
@@ -31,11 +32,11 @@ export function ErpApp() {
         intro: 'Something your software can’t do, a report you wish you had, a job you do by hand every day? Type it, or record a voice note — we will show you how ERPNext handles it.',
         example: 'We bill from Tally but stock is in Excel, and the two never match at month-end.',
       }}
-      ensureSaved={() => ensureCheck('erp', useErp, points)}
+      ensureSaved={() => ensureCheck('erp', useErp, points, toSave)}
       details={{ title: 'Where should we send your ERP plan?', intro: 'Your business and how to reach you — so the plan in your report goes to the right person.' }}
       resultsHref="/erp/results"
       onSubmit={async () => {
-        await syncCheck('erp', useErp, points());
+        await syncCheck('erp', useErp, points(), toSave());
       }}
     />
   );

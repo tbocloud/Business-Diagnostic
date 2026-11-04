@@ -4,7 +4,7 @@ import { Icon } from '@/components/Icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { RealGap as RealGapData } from '@/lib/types';
 
-function ScoreVsTarget({ score, target }: { score: number; target: number }) {
+function ScoreVsTarget({ score, target, targetLabel }: { score: number; target: number; targetLabel: string }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
@@ -13,7 +13,7 @@ function ScoreVsTarget({ score, target }: { score: number; target: number }) {
           <span className="text-[13px] text-muted">/ 100</span>
         </p>
         <p className="text-right text-[13px] text-ink-2">
-          Target for your stage <span className="font-semibold text-ink">{target}</span>
+          {targetLabel} <span className="font-semibold text-ink">{target}</span>
         </p>
       </div>
       <div className="relative mt-3 h-3 rounded-full bg-data-track" aria-hidden="true">
@@ -27,7 +27,7 @@ function ScoreVsTarget({ score, target }: { score: number; target: number }) {
   );
 }
 
-export function RealGap({ gap }: { gap: RealGapData }) {
+export function RealGap({ gap, targetLabel = 'Target for your stage' }: { gap: RealGapData; targetLabel?: string }) {
   const { actual, perceived, topIssue, hiddenStrength } = gap;
   // Side-by-side only when there is a real comparison: the client picked one of the listed
   // headaches, which maps to areas. A typed-in headache can't be compared, so it isn't shown
@@ -108,7 +108,7 @@ export function RealGap({ gap }: { gap: RealGapData }) {
             </p>
             {actual.score !== null && (
               <div className="mt-5">
-                <ScoreVsTarget score={actual.score} target={actual.target} />
+                <ScoreVsTarget score={actual.score} target={actual.target} targetLabel={targetLabel} />
               </div>
             )}
             {topIssue && (
