@@ -94,20 +94,22 @@ function crm_sync_submission(int $id): void {
             db()->prepare('UPDATE submissions SET report_key = ? WHERE id = ?')->execute([$row['report_key'], $id]);
         }
 
+        $doctype = rawurlencode(CRM_DOCTYPE);
+        // The client's existing record: this check's own, else the Stage 1 check it follows (same
+        // device), else one with the same email, phone, or business name and contact name.
+        $ref = $row['crm_ref'] ?: (crm_parent_ref($row) ?? (crm_find_client($row)[0] ?? null));
+
         // Field names must match the DocType in docs/crm-setup.md. Who the client is: only what we
-        // know, so syncing one check (e.g. Stage 2) never wipes details another one added.
+        // know, so syncing one check (e.g. Stage 2) never wipes details another one added. The notes:
+        // from every check on that record, so a check without a note never blanks another's.
         $kind = $row['check_type'] ?? 'health';
         $fields = array_filter([
             'business_name' => $row['company_name'],
             'contact_name'  => $row['contact_name'],
             'phone'         => crm_phone($row['phone_number']),
             'email'         => $row['email'] ? trim($row['email']) : null,
-        ], fn($v) => $v !== null && $v !== '') + crm_check_fields($kind, $id, $row) + crm_open_fields($row);
+        ], fn($v) => $v !== null && $v !== '') + crm_check_fields($kind, $id, $row) + crm_open_fields($row, $ref);
 
-        $doctype = rawurlencode(CRM_DOCTYPE);
-        // The client's existing record: this check's own, else the Stage 1 check it follows (same
-        // device), else one with the same email, phone, or business name and contact name.
-        $ref = $row['crm_ref'] ?: (crm_parent_ref($row) ?? (crm_find_client($row)[0] ?? null));
         if ($ref) {
             crm_request('PUT', "/api/resource/$doctype/" . rawurlencode($ref), $fields);
         } else {
@@ -116,6 +118,9 @@ function crm_sync_submission(int $id): void {
             $ref = $res['data']['name'] ?? null;
             if (!is_string($ref) || $ref === '') throw new RuntimeException('CRM did not return the new record name');
         }
+        // Remember the record now: if a later step fails (the voice note), the retry updates this
+        // record instead of creating another one.
+        if ($ref !== $row['crm_ref']) db()->prepare('UPDATE submissions SET crm_ref = ? WHERE id = ?')->execute([$ref, $id]);
         // A voice note not attached yet: attach it to the record (which fills voice_note), then drop our copy.
         if (!empty($row['open_voice']) && empty($row['open_voice_url']) && is_file(voice_dir() . '/' . basename($row['open_voice']))) {
             $url = crm_upload_voice($ref, voice_dir() . '/' . basename($row['open_voice']));
@@ -237,12 +242,14 @@ function crm_check_fields(string $kind, int $id, array $row): array {
  * The last step of every check this client took ("Anything else on your mind?"), together:
  * the summary points and their own words, labelled by check when there is more than one, and
  * the latest voice note (attached below; empty again when the client removed it).
+ * $ref is the CRM record being synced (by default the row's own), whose other checks are included.
  */
-function crm_open_fields(array $row): array {
+function crm_open_fields(array $row, ?string $ref = null): array {
+    $ref = $ref ?: ($row['crm_ref'] ?: null);
     $rows = [$row];
-    if (!empty($row['crm_ref'])) {
+    if ($ref) {
         $stmt = db()->prepare('SELECT * FROM submissions WHERE crm_ref = ? AND id <> ? ORDER BY id');
-        $stmt->execute([$row['crm_ref'], $row['id']]);
+        $stmt->execute([$ref, $row['id']]);
         $rows = array_merge($stmt->fetchAll(), [$row]);
     }
     $names = ['health' => 'Stage 1', 'deep' => 'Stage 2', 'erp' => 'ERP check'];

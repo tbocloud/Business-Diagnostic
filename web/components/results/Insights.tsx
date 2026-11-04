@@ -5,9 +5,13 @@ import type { Insight, Results, SectionId } from '@/lib/types';
 import { EFFORT_META } from './labels';
 import { SectionHeader } from './SectionHeader';
 
-/** The area's name and icon — a Stage 1 section, or (Stage 2, the ERP check) the title and icon given. */
+/**
+ * The area's name and icon: the ones given (Stage 2 and the ERP check have their own areas, some
+ * with the same ids as Stage 1's — "customers", "sales"), else the Stage 1 section's.
+ */
 export function AreaTag({ id, title, icon }: { id: SectionId; title?: string; icon?: string }) {
-  const s = SECTION_BY_ID[id] ?? { title: title ?? '', icon: icon ?? 'CircleDot' };
+  const base = SECTION_BY_ID[id];
+  const s = { title: title || base?.title || '', icon: icon || base?.icon || 'CircleDot' };
   return (
     <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-muted">
       <Icon name={s.icon} className="h-3.5 w-3.5" />

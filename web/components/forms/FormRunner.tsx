@@ -170,7 +170,7 @@ export function FormRunner({ sections: allSections, useStore, stage1, profile, e
                 />
               </div>
             ) : (
-              details && <DetailsStep {...details} number={current + 1} total={total} eyebrow={eyebrow} useStore={useStore} />
+              details && <DetailsStep {...details} number={current + 1} total={total} eyebrow={eyebrow} useStore={useStore} onSkip={() => void next()} />
             )}
             <FormFooter
               answered={section ? sectionFields.filter((f) => isAnswered(answers[f.id])).length : current === noteStep ? (said ? 1 : 0) : 1}
@@ -300,7 +300,24 @@ function FieldBlock({ field: f, number, ctx, useStore }: { field: FormField; num
   );
 }
 
-function DetailsStep({ title, intro, number, total, eyebrow, useStore }: { title: string; intro: string; number: number; total: number; eyebrow: string; useStore: Store }) {
+function DetailsStep({
+  title,
+  intro,
+  number,
+  total,
+  eyebrow,
+  useStore,
+  onSkip,
+}: {
+  title: string;
+  intro: string;
+  number: number;
+  total: number;
+  eyebrow: string;
+  useStore: Store;
+  /** Go on to the report (it's the last step). */
+  onSkip: () => void;
+}) {
   const details = useStore((s) => s.details);
   const setDetails = useStore((s) => s.setDetails);
   const base = useId();
@@ -333,7 +350,10 @@ function DetailsStep({ title, intro, number, total, eyebrow, useStore }: { title
         skipLabel="Skip — see the report without them"
         skipTitle="Skip your details?"
         skipBody="You’ll still get your report. We just won’t be able to send you a plan for it."
-        onSkipAll={() => setDetails({ phone: '', email: '' })}
+        onSkipAll={() => {
+          setDetails({ phone: '', email: '' });
+          onSkip();
+        }}
       />
       <div className="mt-3 grid gap-4 rounded-[18px] border border-line bg-card px-4 py-5 shadow-card sm:grid-cols-2 sm:px-5">
         {field('businessName', 'Business name', 'text', 'e.g. Green Leaf Organics', 'organization')}

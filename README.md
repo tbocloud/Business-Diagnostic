@@ -80,7 +80,7 @@ define('DB_NAME',     'biz_diagnostic');
 define('SETUP_TOKEN', 'choose-a-long-secret');
 ```
 
-The OpenAI key is no longer used and can be removed. Anything missing falls back to environment variables with the same names (see `.env.example`).
+`OPENAI_API_KEY` is optional: it switches on the AI summary and the voice-note transcript of the last step (see "The last step" below). Without it, notes and voice notes are still saved and sent to the CRM, just not summarised. Anything missing falls back to environment variables with the same names (see `.env.example`).
 
 > **Which wins, `config.php` or environment variables?** If the server has a **`DB_HOST` environment variable**, `api/config.php` is **not loaded at all**, and every setting must then come from environment variables (`DB_*`, `SETUP_TOKEN`, `CRM_*`, `SITE_URL`). This is how local runs (`dev/run-local.sh`) avoid touching the live database. Normal cPanel hosting sets no `DB_HOST` variable, so `config.php` is used as before.
 
