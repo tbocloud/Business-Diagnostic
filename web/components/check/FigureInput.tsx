@@ -32,10 +32,16 @@ export function FigureInput({ value, onChange, min, max, step = 1, prefix, unit,
   const [text, setText] = useState(value === undefined ? '' : String(value));
 
   // Follow changes from outside (picking "Not sure" clears the figure), but never rewrite what the
-  // client is in the middle of typing ("4." while they type "4.5").
+  // client is in the middle of typing ("4." while they type "4.5") — nor a number we refused
+  // ourselves (out of range), which clears the saved figure but must stay in the box with its hint.
   useEffect(() => {
-    setText((current) => (parseFigure(current) === value ? current : value === undefined ? '' : String(value)));
-  }, [value]);
+    setText((current) => {
+      const n = parseFigure(current);
+      if (n === value) return current;
+      if (value === undefined && current.trim() !== '' && (n === undefined || n < min || n > max)) return current;
+      return value === undefined ? '' : String(value);
+    });
+  }, [value, min, max]);
 
   const typed = parseFigure(text);
   const outOfRange = text.trim() !== '' && (typed === undefined || typed < min || typed > max);

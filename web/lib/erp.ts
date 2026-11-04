@@ -596,8 +596,10 @@ export function computeErp(answers: FormAnswers, profile?: Profile): ErpResults 
 
   const currentId = picked(answers, 'erp_current')[0];
   const currentOther = answers.erp_current?.other?.trim();
-  const current = currentId
-    ? { label: ERP_SECTIONS[0].fields[1].options!.find((o) => o.id === currentId)!.label, note: CURRENT_NOTES[currentId] ?? '' }
+  // An id we don't know (an edited share link, an old save) falls back to their own words, or nothing.
+  const currentOpt = currentId ? ERP_SECTIONS.flatMap((s) => s.fields).find((f) => f.id === 'erp_current')?.options?.find((o) => o.id === currentId) : undefined;
+  const current = currentOpt
+    ? { label: currentOpt.label, note: CURRENT_NOTES[currentOpt.id] ?? '' }
     : currentOther
       ? { label: currentOther, note: '' }
       : undefined;
