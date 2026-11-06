@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { Check, RotateCcw, SkipForward } from 'lucide-react';
 import { useId, useState } from 'react';
 import { ChoiceCard, onGroupKeyDown } from './ChoiceCard';
+import { type BlockFigure, FigureInput } from './FigureInput';
 import { OtherPanel } from './OtherPanel';
 
 export interface BlockOption {
@@ -40,6 +41,8 @@ interface ChoiceBlockProps {
   gridClassName?: string;
   /** "Other — type your own". Omit to hide it. */
   other?: BlockOther;
+  /** Number questions: the figure box, shown above the options (which become quick alternatives). */
+  figure?: BlockFigure;
   answered: boolean;
   skipped: boolean;
   onSkip: () => void;
@@ -62,6 +65,7 @@ export function ChoiceBlock({
   layout = 'pill',
   gridClassName,
   other,
+  figure,
   answered,
   skipped,
   onSkip,
@@ -149,11 +153,18 @@ export function ChoiceBlock({
           </button>
         </div>
       ) : (
+        <>
+        {figure && (
+          <div className="mt-3 sm:pl-10">
+            <FigureInput {...figure} />
+            {options.length > 0 && <p className="mt-3 text-[12.5px] text-muted">Or pick one:</p>}
+          </div>
+        )}
         <div
           role={kind === 'radio' ? 'radiogroup' : 'group'}
           aria-labelledby={headingId}
           onKeyDown={onGroupKeyDown}
-          className={clsx('mt-3 grid gap-1.5 sm:pl-10', gridClassName)}
+          className={clsx(figure ? 'mt-1.5' : 'mt-3', 'grid gap-1.5 sm:pl-10', gridClassName)}
         >
           {options.map((o, i) => (
             <ChoiceCard
@@ -199,6 +210,7 @@ export function ChoiceBlock({
             </div>
           )}
         </div>
+        </>
       )}
     </section>
   );

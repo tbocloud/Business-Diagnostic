@@ -64,8 +64,25 @@ export interface Answer {
   selected: string[];
   /** Text typed into "Other — type your own". */
   other?: string;
+  /** Number questions: the figure typed in (cleared when a quick choice such as "Not sure" is picked). */
+  value?: number;
   /** True when the client chose to skip this question (or its whole section). */
   skipped?: boolean;
+}
+
+/** How a number question asks for and scores its figure. */
+export interface NumberSpec {
+  min: number;
+  max: number;
+  /** Input step; default 1. */
+  step?: number;
+  /** Shown before the box, e.g. "₹". */
+  prefix?: string;
+  /** Shown after the box, e.g. "hours a week" (may contain vocabulary tokens). */
+  unit: string;
+  placeholder?: string;
+  /** 0–100 for a figure; undefined = neutral (recorded and used in "Your numbers", not scored). */
+  score?: (n: number, ctx: Ctx) => number | undefined;
 }
 
 export type Answers = Record<string, Answer>;
@@ -104,10 +121,16 @@ export interface Question {
   text: string;
   /** Optional one-line helper shown under the question. */
   hint?: string;
-  type: 'single' | 'multi';
+  /** 'number': a figure typed into a box (see `number`), plus optional quick choices like "Not sure". */
+  type: 'single' | 'multi' | 'number';
+  /** Choices. For number questions: quick alternatives to typing a figure ("Not sure", "Paid upfront"). */
   options: Option[];
+  /** Number questions only. */
+  number?: NumberSpec;
   /** Show the "Other — type your own" choice. Defaults to true. */
   allowOther?: boolean;
+  /** Multi-select only: at most this many picks (further options are disabled until one is unpicked). */
+  maxPicks?: number;
   /** 1 = nice to have, 2 = important (default), 3 = critical. */
   weight?: 1 | 2 | 3;
   /** When present, the question is only asked if this returns true. */
@@ -167,6 +190,9 @@ export interface Insight {
   weight: number;
   /** Higher = more urgent. (100 − score) × weight. */
   severity: number;
+  /** For areas that aren't Stage 1 sections (Stage 2, the ERP check): their name and icon. */
+  sectionTitle?: string;
+  sectionIcon?: string;
 }
 
 export type SectionStatus = 'healthy' | 'push' | 'priority' | 'not-assessed';
@@ -225,6 +251,8 @@ export interface ActionItem {
   section: SectionId;
   sectionTitle: string;
   effort: Effort;
+  /** Areas that aren't Stage 1 sections: their icon. */
+  sectionIcon?: string;
 }
 
 /**
@@ -254,6 +282,32 @@ export interface KeyPoint {
   said?: string;
 }
 
+/** One figure from the number questions, with the maths that makes it mean something. */
+export interface NumberFact {
+  id: string;
+  /** lucide-react icon name. */
+  icon: string;
+  /** Small caption, e.g. "Enquiries that walk away". */
+  label: string;
+  /** The eye-catcher, e.g. "≈ 32 a month". */
+  big: string;
+  /** One plain sentence explaining it. */
+  note: string;
+  tone: 'good' | 'warn' | 'gap' | 'neutral';
+  section: SectionId;
+}
+
+/**
+ * What the client described in the last, open step ("Anything else on your mind?"), as tags
+ * only: which areas it touches and which of our services fit. Never their words — those go
+ * to the team (CRM), not into the report. Stored inside `answers` under OPEN_SIGNALS_ID so
+ * every report view (own device, share link, CRM link, BDE panel) rebuilds the same report.
+ */
+export interface OpenSignals {
+  areas: SectionId[];
+  services: ServiceId[];
+}
+
 export interface Results {
   businessName: string;
   overall: number | null;
@@ -268,12 +322,16 @@ export interface Results {
   realGap: RealGap | null;
   actionPlan: { week: ActionItem[]; month: ActionItem[]; quarter: ActionItem[] };
   summary: string;
+  /** Wording for Stage 2 / the ERP check (e.g. "System health", "Target"); Stage 1's when absent. */
+  labels?: { score: string; target: string };
   /** Six headline points in presentation order — for the "Key points" strip and review mode. */
   keyPoints: KeyPoint[];
   /** Overall score if every scored area reached its stage target (never below `overall`). */
   potential: number | null;
   /** Services that would fix the client's gaps, most relevant first (empty if none apply). */
   services: ServiceRecommendation[];
+  /** "Your numbers": figures from the number questions with what they mean (empty if none given). */
+  numbers: NumberFact[];
   stats: {
     asked: number;
     answered: number;

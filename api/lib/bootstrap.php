@@ -23,6 +23,11 @@ foreach ([
     'CRM_URL' => '', 'CRM_API_KEY' => '', 'CRM_API_SECRET' => '', 'CRM_DOCTYPE' => 'Business Health Check',
     // Public address of this site, used to build the report links sent to the CRM.
     'SITE_URL' => '',
+    // AI summary of the client's note in the last step. Empty key = no summary (the note itself is still kept).
+    // OPENAI_API_KEY is the same setting the old GPT version of the site used.
+    'OPENAI_API_KEY' => '', 'AI_MODEL' => 'gpt-4o-mini', 'AI_BASE_URL' => 'https://api.openai.com/v1',
+    // Speech to text for voice notes (same key).
+    'AI_TRANSCRIBE_MODEL' => 'gpt-4o-mini-transcribe',
 ] as $key => $fallback) {
     if (!defined($key)) {
         $env = getenv($key);

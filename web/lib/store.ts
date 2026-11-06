@@ -3,14 +3,27 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { isAnswered } from './engine';
+import { OPEN_SIGNALS_ID, openSignalsAnswer } from './openSignals';
 import { EMPTY_PROFILE } from './profile';
 import { questionsFor } from './questions';
 import { SECTIONS } from './sections';
-import type { Answer, Answers, Profile, SectionId } from './types';
+import type { Answer, Answers, OpenSignals, Profile, SectionId } from './types';
 
-// Steps: 0 = "About your business" form, 1..SECTIONS.length = one form per section.
+// Steps: 0 = "About your business" form, 1..SECTIONS.length = one form per section,
+// then OPEN_STEP = "Anything else on your mind?" (optional: a note in the client's own words).
 export const PROFILE_STEP = 0;
 export const LAST_STEP = SECTIONS.length;
+export const OPEN_STEP = LAST_STEP + 1;
+
+/** The last, open step. The note and voice note go to the team (CRM) — never into the report. */
+export interface OpenNote {
+  /** Their note, in their own words. */
+  text: string;
+  /** A voice note saved on the server (the recording itself isn't kept in the browser). */
+  voice?: { seconds: number };
+}
+
+const EMPTY_OPEN: OpenNote = { text: '' };
 export const sectionAtStep = (step: number) => (step >= 1 && step <= LAST_STEP ? SECTIONS[step - 1] : undefined);
 
 interface CheckState {
@@ -27,6 +40,9 @@ interface CheckState {
   submissionToken?: string;
   /** The client already left a phone/email on the results page. */
   contactSaved?: boolean;
+  open: OpenNote;
+  /** The client finished (or skipped) the last, open step. */
+  openDone: boolean;
 
   setProfile: (patch: Partial<Profile>) => void;
   setAnswer: (questionId: string, answer: Answer) => void;
@@ -41,6 +57,10 @@ interface CheckState {
   finish: () => void;
   setSubmission: (id: number, token: string) => void;
   setContactSaved: () => void;
+  setOpen: (patch: Partial<OpenNote>) => void;
+  /** What the open step touches, as tags inside the answers (so every report view uses them). */
+  setOpenSignals: (signals: OpenSignals) => void;
+  finishOpen: () => void;
   reset: () => void;
 }
 
@@ -54,6 +74,8 @@ const initial = {
   submissionId: undefined as number | undefined,
   submissionToken: undefined as string | undefined,
   contactSaved: false,
+  open: EMPTY_OPEN,
+  openDone: false,
 };
 
 const withDone = (done: SectionId[], id: SectionId) => (done.includes(id) ? done : [...done, id]);
@@ -112,7 +134,7 @@ export const useCheck = create<CheckState>()(
         set((s) => ({ answers: next, doneSections: withDone(s.doneSections, sectionId) }));
       },
 
-      goTo: (step) => set({ step: Math.max(0, Math.min(LAST_STEP, step)) }),
+      goTo: (step) => set({ step: Math.max(0, Math.min(OPEN_STEP, step)) }),
 
       finish: () => set({ completedAt: new Date().toISOString() }),
 
@@ -120,7 +142,19 @@ export const useCheck = create<CheckState>()(
 
       setContactSaved: () => set({ contactSaved: true }),
 
-      reset: () => set({ ...initial, profile: { ...EMPTY_PROFILE, goals: [] }, answers: {} }),
+      setOpen: (patch) => set((s) => ({ open: { ...s.open, ...patch } })),
+
+      setOpenSignals: (signals) =>
+        set((s) => {
+          const answers = { ...s.answers };
+          if (signals.areas.length || signals.services.length) answers[OPEN_SIGNALS_ID] = openSignalsAnswer(signals);
+          else delete answers[OPEN_SIGNALS_ID];
+          return { answers };
+        }),
+
+      finishOpen: () => set({ openDone: true }),
+
+      reset: () => set({ ...initial, profile: { ...EMPTY_PROFILE, goals: [] }, answers: {}, open: { ...EMPTY_OPEN } }),
     }),
     {
       name: 'business-health-check:v1',
@@ -135,7 +169,16 @@ export const useCheck = create<CheckState>()(
         submissionId: s.submissionId,
         submissionToken: s.submissionToken,
         contactSaved: s.contactSaved,
+        open: s.open,
+        openDone: s.openDone,
       }),
+      // Saves from before the open step have no `open` yet.
+      merge: (saved, current) => {
+        const s = (saved ?? {}) as Partial<CheckState>;
+        const open: OpenNote = { text: typeof s.open?.text === 'string' ? s.open.text : '' };
+        if (typeof s.open?.voice?.seconds === 'number') open.voice = { seconds: s.open.voice.seconds };
+        return { ...current, ...s, open, openDone: !!s.openDone };
+      },
     },
   ),
 );

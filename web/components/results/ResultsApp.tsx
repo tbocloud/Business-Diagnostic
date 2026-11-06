@@ -4,6 +4,7 @@ import { Eye, Info, type LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { BRAND } from '@/lib/brand';
 import { shareUrl } from '@/lib/share';
+import { useDeep, useErp } from '@/lib/forms';
 import { useCheck } from '@/lib/store';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
@@ -11,6 +12,7 @@ import { PageSkeleton } from '@/components/ui/Skeleton';
 import { ContactCapture } from './ContactCapture';
 import { ContactCta } from './ContactCta';
 import { EmptyState, emptyCopy, INVALID_LINK } from './EmptyState';
+import { NextChecks } from './NextChecks';
 import { ReportBody } from './ReportBody';
 import { ReportHeader } from './ReportHeader';
 import { useReportData } from './useReportData';
@@ -21,6 +23,8 @@ export const FOOTNOTE =
 export function ResultsApp() {
   const router = useRouter();
   const data = useReportData();
+  const deepDone = useDeep((s) => !!s.completedAt);
+  const erpDone = useErp((s) => !!s.completedAt);
 
   if (data.status === 'loading') {
     return (
@@ -83,6 +87,24 @@ export function ResultsApp() {
         onGetHelp={!isShared ? scrollToCallback : undefined}
         footer={
           <>
+            {!isShared && (
+              <NextChecks
+                show={[...(deepDone ? [] : ['deep' as const]), ...(erpDone ? [] : ['erp' as const])]}
+                title={deepDone && erpDone ? 'Your other reports' : 'Go deeper'}
+                lead={deepDone && erpDone ? 'Everything you’ve told us, report by report.' : 'Your Stage 1 answers carry over — nothing is asked twice.'}
+              >
+                {deepDone && (
+                  <ButtonLink href="/deep/results" variant="secondary">
+                    Your Stage 2 report
+                  </ButtonLink>
+                )}
+                {erpDone && (
+                  <ButtonLink href="/erp/results" variant="secondary">
+                    Your ERP check report
+                  </ButtonLink>
+                )}
+              </NextChecks>
+            )}
             <ContactCta businessName={results.businessName} />
             <p className="no-print border-t border-line pt-6 text-[13px] leading-relaxed text-muted">{FOOTNOTE}</p>
           </>
@@ -93,14 +115,14 @@ export function ResultsApp() {
 }
 
 /** "Get help with …" from an area's panel → the callback form, phone field focused. */
-function scrollToCallback() {
+export function scrollToCallback() {
   const el = document.getElementById('callback');
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.querySelector<HTMLInputElement>('input[type="tel"]')?.focus({ preventScroll: true });
 }
 
-function Banner({
+export function Banner({
   Icon,
   tone,
   link,
@@ -131,7 +153,7 @@ function Banner({
   );
 }
 
-function Frame({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+export function Frame({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="min-h-dvh">
       <header className="no-print border-b border-line">

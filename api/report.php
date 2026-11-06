@@ -1,6 +1,8 @@
 <?php
 // ─────────────────────────────────────────────────────────────
-//  POST /api/report.php   { id, k }  → { profile, answers, completedAt }
+//  POST /api/report.php   { id, k }  → { kind, profile, answers, completedAt }
+//  kind: 'health' (Stage 1), 'deep' (Stage 2) or 'erp' (ERP check; these two send
+//  `details` instead of `profile`).
 //  The data behind a short report link (the link stored in the CRM:
 //  /results/#id=123&k=…). POST keeps the key out of URLs and server logs.
 //
@@ -26,11 +28,18 @@ run(function () {
     if (!$row || !$row['report_key'] || !hash_equals($row['report_key'], $key)) fail('Report not found', 404);
 
     $raw = decode_json_col($row['raw_answers']);
-    if (!is_array($raw) || ($raw['version'] ?? null) !== 2) fail('Report not found', 404);
-
-    json_out([
-        'profile'     => $raw['profile'] ?? null,
-        'answers'     => $raw['answers'] ?? null,
-        'completedAt' => iso($row['updated_at'] ?? $row['created_at']),
-    ]);
+    $version = is_array($raw) ? ($raw['version'] ?? null) : null;
+    $completedAt = iso($row['updated_at'] ?? $row['created_at']);
+    if ($version === 2) {
+        json_out(['kind' => 'health', 'profile' => $raw['profile'] ?? null, 'answers' => $raw['answers'] ?? null, 'completedAt' => $completedAt]);
+    }
+    if ($version === 'deep-1' || $version === 'erp-1') {
+        json_out([
+            'kind'        => substr($version, 0, -2),
+            'details'     => $raw['details'] ?? null,
+            'answers'     => $raw['answers'] ?? null,
+            'completedAt' => $completedAt,
+        ]);
+    }
+    fail('Report not found', 404);
 });

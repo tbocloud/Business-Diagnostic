@@ -21,6 +21,22 @@ const answered = (qid: string, ...opts: string[]) => (c: Ctx) =>
   !!c.answers[qid]?.selected.some((o) => opts.includes(o));
 const not = (f: (c: Ctx) => boolean) => (c: Ctx) => !f(c);
 const all = (...fs: ((c: Ctx) => boolean)[]) => (c: Ctx) => fs.every((f) => f(c));
+/** The figure typed into a number question, if any. */
+const figure = (qid: string) => (c: Ctx) => c.answers[qid]?.value;
+
+// ── Scoring helpers for number questions ────────────────────
+/** Higher is better: the first band whose minimum `n` reaches wins, e.g. [[6, 100], [4, 80]]. */
+const atLeast = (bands: [number, number][], below: number) => (n: number) => {
+  for (const [min, score] of bands) if (n >= min) return score;
+  return below;
+};
+/** Lower is better: the first band whose limit `n` is within wins, e.g. [[2, 100], [5, 80]]. */
+const upTo = (bands: [number, number][], above: number) => (n: number) => {
+  for (const [max, score] of bands) if (n <= max) return score;
+  return above;
+};
+/** Industries where a thin margin per sale is normal (trading, shops, food, making things, building). */
+const LOW_MARGIN: IndustryId[] = ['retail', 'food', 'trading', 'manufacturing', 'construction'];
 
 export const QUESTIONS: Question[] = [
   // ═══════════════════════════════════════════════════════════
@@ -77,6 +93,57 @@ export const QUESTIONS: Question[] = [
     solution: {
       services: ['marketing', 'erp'],
       text: "Digital marketing builds steady new channels — Google search & Maps, social media and WhatsApp campaigns — so one source drying up never stops your sales. Your ERP's CRM tags every lead with its source, so you can see exactly what's working.",
+    },
+  },
+  {
+    id: 'sales_enquiries',
+    section: 'sales',
+    text: 'Roughly how many new enquiries or leads do you get in a month?',
+    hint: 'Calls, WhatsApp messages, website forms, walk-ins asking for a price — a rough number is fine.',
+    type: 'number',
+    weight: 1,
+    show: notIndustry('retail', 'food'),
+    allowOther: false,
+    // The figure itself is neutral (a small and a large business both answer well); not knowing it is the gap.
+    number: { min: 0, max: 100000, unit: 'a month', placeholder: 'e.g. 40' },
+    options: [{ id: 'unsure', label: "I don't know", score: 25 }],
+    strength: 'You know how many enquiries come in',
+    gap: "Enquiries aren't being counted",
+    why: "You can't grow what you don't count. The monthly number of enquiries shows whether you need more leads — or better follow-up on the ones you already get.",
+    fix: 'For the next 30 days, note every enquiry in one place: the date, where it came from, and whether it bought.',
+    effort: 'quick',
+    steps: [
+      "Ask every new {customer} how they heard about you, and add it to the same list.",
+      "At the end of the month, count enquiries by source — put more effort into the top two.",
+    ],
+    solution: {
+      services: ['erp'],
+      text: "An ERP CRM logs every enquiry automatically — from WhatsApp, calls, your website and walk-ins — so the count, the source and the follow-up are always in front of you.",
+    },
+  },
+  {
+    id: 'sales_convert',
+    section: 'sales',
+    text: 'Out of every 10 enquiries, how many become paying {customers}?',
+    hint: 'Your best guess is fine.',
+    type: 'number',
+    weight: 3,
+    show: notIndustry('retail', 'food'),
+    allowOther: false,
+    number: { min: 0, max: 10, unit: 'out of 10', placeholder: 'e.g. 3', score: atLeast([[6, 100], [4, 80], [3, 60], [2, 40], [1, 20]], 5) },
+    options: [{ id: 'unsure', label: "I don't know", score: 20 }],
+    strength: 'A healthy share of enquiries become {customers}',
+    gap: 'Most enquiries never become {customers}',
+    why: "Every enquiry has already cost you time or marketing money. Winning just one more in every 10 is usually cheaper than finding twice as many leads.",
+    fix: "Ask the last 5 people who enquired but didn't buy why not — price, speed, trust or no follow-up — and fix the most common reason first.",
+    effort: 'medium',
+    steps: [
+      "Reply to every enquiry within an hour during working hours — speed alone wins many sales.",
+      "Follow up twice: the next day, and again 3–4 days later with a clear offer.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "An ERP CRM puts every enquiry in one pipeline with automatic follow-up reminders, so nobody is forgotten. An AI assistant replies instantly on WhatsApp and your website, answers common questions and books the next step — even after hours.",
     },
   },
   {
@@ -185,16 +252,13 @@ export const QUESTIONS: Question[] = [
   {
     id: 'sales_repeat',
     section: 'sales',
-    text: 'How much of your revenue comes from repeat {customers}?',
-    hint: 'Include {customers} who buy again or refer others to you.',
-    type: 'single',
+    text: 'Roughly what share of your sales comes from repeat {customers}?',
+    hint: 'Include {customers} who buy again or refer others to you. A rough guess is fine.',
+    type: 'number',
     show: all(not(level('starting')), notIndustry('construction')),
-    options: [
-      { id: 'most', label: 'More than half', score: 100 },
-      { id: 'quarter', label: 'Around a quarter to a half', score: 70 },
-      { id: 'few', label: 'Less than a quarter', score: 35 },
-      { id: 'unsure', label: "I'm not sure", score: 20 },
-    ],
+    allowOther: false,
+    number: { min: 0, max: 100, unit: '%', placeholder: 'e.g. 40', score: atLeast([[50, 100], [35, 80], [25, 65], [10, 40]], 20) },
+    options: [{ id: 'unsure', label: "I'm not sure", score: 20 }],
     strength: 'Loyal {customers} keep coming back',
     gap: 'Few {customers} come back for more',
     why: 'Keeping an existing {customer} usually costs far less than finding a new one — repeat business is the cheapest growth there is.',
@@ -394,19 +458,46 @@ export const QUESTIONS: Question[] = [
     },
   },
   {
+    id: 'mkt_spend',
+    section: 'marketing',
+    text: 'About how much do you spend on marketing in a typical month?',
+    hint: 'Ads, boosted posts, agency fees, printing, discounts for promotions — everything together.',
+    type: 'number',
+    weight: 1,
+    show: not(answered('mkt_plan', 'none')),
+    allowOther: false,
+    // Neutral: the right budget depends on the business. Used in "Your numbers" (cost per enquiry).
+    number: { min: 0, max: 100000000, prefix: '₹', unit: 'a month', placeholder: 'e.g. 15000' },
+    options: [
+      { id: 'nothing', label: 'Nothing right now' },
+      { id: 'unsure', label: 'Not sure' },
+    ],
+    strength: 'You know what marketing costs you',
+    gap: "Marketing spend isn't tracked",
+    why: 'Knowing what you spend — and what each enquiry costs — shows which marketing is worth keeping.',
+    fix: 'Add up last month’s marketing spend, and divide it by the enquiries it brought in.',
+    effort: 'quick',
+    solution: {
+      services: ['marketing'],
+      text: "Digital marketing with proper tracking shows the cost of every enquiry and {customer} by channel, so the budget moves to what works.",
+    },
+  },
+  {
     id: 'mkt_reviews',
     section: 'marketing',
-    text: 'How about reviews and testimonials?',
-    type: 'single',
+    text: 'How many Google reviews does your business have?',
+    hint: 'Search your business name on Google Maps — the number is under your name.',
+    type: 'number',
+    show: notIndustry('manufacturing', 'trading'),
+    allowOther: false,
+    number: { min: 0, max: 100000, unit: 'reviews', placeholder: 'e.g. 25', score: atLeast([[100, 100], [50, 85], [20, 65], [5, 40], [1, 20]], 5) },
     options: [
-      { id: 'many', label: 'We ask every happy {customer} — we have lots of good reviews', score: 100 },
-      { id: 'some', label: "We have some, but don't ask regularly", score: 55 },
-      { id: 'old', label: 'Only a few, mostly old', score: 25 },
-      { id: 'none', label: 'We have no reviews online', score: 0 },
+      { id: 'nolisting', label: "We're not on Google Maps", score: 0 },
+      { id: 'unsure', label: 'Not sure', score: 25 },
     ],
-    strength: 'Strong reviews build trust before you say a word',
-    gap: 'Few reviews to prove your quality',
-    why: 'People trust other {customers} more than any advert. Recent reviews are often the deciding factor.',
+    strength: 'Plenty of reviews build trust before you say a word',
+    gap: 'Too few reviews to prove your quality',
+    why: 'Most people check Google reviews before they call. A business with 50 reviews looks safer than one with 5 — even when the work is just as good.',
     fix: 'Send your 10 happiest {customers} a direct link to leave a Google review this week.',
     effort: 'quick',
     steps: [
@@ -416,6 +507,29 @@ export const QUESTIONS: Question[] = [
     solution: {
       services: ['marketing', 'ai'],
       text: "Automated WhatsApp and email review requests after each sale build a steady stream of fresh Google reviews. AI drafts polite, personal replies to every review, so you look responsive without spending hours.",
+    },
+  },
+  {
+    id: 'mkt_rating',
+    section: 'marketing',
+    text: 'And what is your average Google rating?',
+    type: 'number',
+    show: (c) => (figure('mkt_reviews')(c) ?? 0) > 0,
+    allowOther: false,
+    number: { min: 1, max: 5, step: 0.1, unit: 'stars out of 5', placeholder: 'e.g. 4.3', score: atLeast([[4.6, 100], [4.3, 85], [4.0, 60], [3.5, 35]], 10) },
+    options: [{ id: 'unsure', label: 'Not sure' }],
+    strength: 'A strong rating on Google',
+    gap: 'Your Google rating may be putting people off',
+    why: 'Many people skip anything below 4 stars. A few unhappy reviews with no reply can cost you {customers} you never hear from.',
+    fix: 'Reply calmly to every negative review with an offer to put it right, and ask your happiest {customers} for a review to lift the average.',
+    effort: 'medium',
+    steps: [
+      "Find the most common complaint in your low reviews and fix that first.",
+      "Ask for reviews right after a {customer} says thank you.",
+    ],
+    solution: {
+      services: ['marketing', 'ai'],
+      text: "Digital marketing manages your Google profile and review requests so the rating climbs steadily. AI drafts calm, personal replies to complaints the same day.",
     },
   },
 
@@ -584,16 +698,13 @@ export const QUESTIONS: Question[] = [
   {
     id: 'ops_admin',
     section: 'operations',
-    text: 'How much of your week goes into repeated admin — invoices, scheduling, chasing payments, messages?',
-    type: 'single',
+    text: 'How many hours a week do you personally spend on repeated admin — invoices, scheduling, chasing payments, reports, messages?',
+    hint: 'Your own time, not the team’s. A rough guess is fine.',
+    type: 'number',
     weight: 3,
-    show: solo,
-    options: [
-      { id: 'little', label: 'Very little — most of it is automated or outsourced', score: 100 },
-      { id: 'hours', label: 'A few hours — manageable', score: 65 },
-      { id: 'day', label: 'About a day a week', score: 30 },
-      { id: 'toomuch', label: 'Too much — it eats into my real work', score: 5 },
-    ],
+    allowOther: false,
+    number: { min: 0, max: 80, unit: 'hours a week', placeholder: 'e.g. 8', score: upTo([[2, 100], [5, 80], [10, 50], [15, 25]], 5) },
+    options: [{ id: 'unsure', label: 'Not sure' }],
     strength: 'Admin is under control',
     gap: 'Admin is eating your productive time',
     why: 'Every hour spent on repeated admin is an hour not spent earning or growing.',
@@ -846,6 +957,43 @@ export const QUESTIONS: Question[] = [
     },
   },
   {
+    id: 'fin_margin',
+    section: 'finance',
+    text: 'Out of every ₹100 of sales, roughly how much is left as profit after all costs?',
+    hint: 'After rent, salaries, materials and your own pay. A rough guess is fine.',
+    type: 'number',
+    weight: 3,
+    allowOther: false,
+    number: {
+      min: -100,
+      max: 100,
+      prefix: '₹',
+      unit: 'profit from every ₹100',
+      placeholder: 'e.g. 12',
+      score: (n, c) =>
+        c.profile.industry && LOW_MARGIN.includes(c.profile.industry)
+          ? atLeast([[15, 100], [10, 80], [6, 55], [3, 30], [0.01, 15]], 0)(n)
+          : atLeast([[25, 100], [15, 80], [10, 55], [5, 30], [0.01, 15]], 0)(n),
+    },
+    options: [
+      { id: 'loss', label: "We're making a loss", score: 0 },
+      { id: 'unsure', label: "I don't know", score: 10 },
+    ],
+    strength: 'Healthy profit on what you sell',
+    gap: 'Profit is thin — or not known',
+    why: 'Sales pay the bills only if enough is left over. With a thin margin, one bad month, a price rise or a late payer can wipe out the profit.',
+    fix: 'Work out the full cost of your top 5 {offering} — materials, time, delivery and overheads — and raise the price or cut the cost where the margin is thinnest.',
+    effort: 'medium',
+    steps: [
+      "Stop selling, or reprice, anything that sells at a loss.",
+      "Check your margin every month, not just at the year end.",
+    ],
+    solution: {
+      services: ['erp', 'ai'],
+      text: "ERP shows the real profit on every product, job and {customer} — not just total sales — so you can see where money is made and lost. AI flags the {offering} and {customers} that quietly eat your margin.",
+    },
+  },
+  {
     id: 'fin_cash',
     section: 'finance',
     text: 'How is your cash flow right now?',
@@ -925,14 +1073,14 @@ export const QUESTIONS: Question[] = [
   {
     id: 'fin_collect',
     section: 'finance',
-    text: 'How quickly do {customers} pay you?',
-    type: 'single',
+    text: 'On average, how many days after you invoice do {customers} actually pay?',
+    type: 'number',
     show: notIndustry('retail', 'food', 'hospitality'),
+    allowOther: false,
+    number: { min: 0, max: 365, unit: 'days', placeholder: 'e.g. 30', score: upTo([[7, 100], [15, 85], [30, 65], [45, 40], [60, 20]], 5) },
     options: [
-      { id: 'ontime', label: 'On time — we have a clear process to chase payments', score: 100 },
-      { id: 'mostly', label: 'Mostly on time, a few late', score: 65 },
-      { id: 'late', label: 'Many pay late and we chase by hand', score: 25 },
-      { id: 'problem', label: 'Late payment is a serious problem', score: 0 },
+      { id: 'upfront', label: 'Paid upfront or on the spot', score: 100 },
+      { id: 'unsure', label: 'Not sure', score: 30 },
     ],
     strength: '{Customers} pay on time',
     gap: 'Late payments are hurting your cash',
@@ -1061,17 +1209,14 @@ export const QUESTIONS: Question[] = [
   {
     id: 'team_keep',
     section: 'team',
-    text: 'How easy is it to find and keep good people?',
-    type: 'single',
+    text: 'Out of every 10 people you hire, how many are still with you after a year?',
+    type: 'number',
     show: hasTeam,
-    options: [
-      { id: 'easy', label: 'Easy — people stay, and good candidates come to us', score: 100 },
-      { id: 'ok', label: 'Manageable, with some turnover', score: 60 },
-      { id: 'hard', label: 'Hard — we struggle to hire or keep people', score: 20 },
-      { id: 'biggest', label: "It's one of our biggest problems", score: 0 },
-    ],
-    strength: 'You attract and keep good people',
-    gap: 'Hiring and keeping good people is a struggle',
+    allowOther: false,
+    number: { min: 0, max: 10, unit: 'out of 10', placeholder: 'e.g. 7', score: atLeast([[8, 100], [6, 70], [4, 40], [2, 15]], 5) },
+    options: [{ id: 'unsure', label: 'Not sure' }],
+    strength: 'Good people stay with you',
+    gap: 'Too many people leave within a year',
     why: 'Every person who leaves takes knowledge with them, and replacing them costs weeks of time and money.',
     fix: "Have a short one-to-one with each team member this month: what's going well, what's frustrating, what would make them stay.",
     effort: 'medium',
@@ -1300,6 +1445,32 @@ export const QUESTIONS: Question[] = [
       text: "We set up practical AI for your business: assistants that answer {customers} on WhatsApp and your website, tools that draft content and quotes, and AI insights inside your ERP that forecast and alert you.",
     },
   },
+  {
+    id: 'tech_offload',
+    section: 'technology',
+    text: 'Which of these jobs would you most like taken off your plate?',
+    hint: 'Pick up to three. This shapes which ideas we put first in your report.',
+    type: 'multi',
+    weight: 1,
+    maxPicks: 3,
+    allowOther: false,
+    // Neutral (no scores): a wish list, not a test. engine.ts maps it to our services.
+    options: [
+      { id: 'replies', label: 'Replying to enquiries and messages' },
+      { id: 'followups', label: 'Following up on leads and quotes' },
+      { id: 'invoicing', label: 'Invoices and payment reminders' },
+      { id: 'books', label: 'Bookkeeping, GST and accounts' },
+      { id: 'stock', label: 'Stock, orders and purchasing' },
+      { id: 'scheduling', label: 'Scheduling staff, jobs or appointments' },
+      { id: 'reports', label: 'Making reports and checking numbers' },
+      { id: 'social', label: 'Social media posts and ads' },
+    ],
+    strength: 'You know exactly what to hand over',
+    gap: 'Daily jobs you want off your plate',
+    why: 'The jobs you most want to stop doing are usually the ones easiest to automate or hand over.',
+    fix: 'Pick the one job from this list that takes most of your time, and find one way to automate or delegate it this month.',
+    effort: 'medium',
+  },
 
   // ═══════════════════════════════════════════════════════════
   // PLANNING & GROWTH
@@ -1329,6 +1500,25 @@ export const QUESTIONS: Question[] = [
       services: ['erp', 'ai'],
       text: "ERP dashboards track your goals against real numbers every day, and AI forecasts show early whether you're on track — no more guessing at year end.",
     },
+  },
+  {
+    id: 'strat_growth',
+    section: 'strategy',
+    text: 'By how much would you like to grow your sales in the next 12 months?',
+    type: 'number',
+    weight: 1,
+    allowOther: false,
+    // Neutral: an ambition, not a score. Shown in "Your numbers" next to what the gaps could add.
+    number: { min: 0, max: 1000, unit: '% more', placeholder: 'e.g. 30' },
+    options: [
+      { id: 'steady', label: 'Keep it steady' },
+      { id: 'unsure', label: "Haven't decided" },
+    ],
+    strength: 'A clear growth target',
+    gap: 'No growth target yet',
+    why: 'A number turns "grow the business" into a plan you can check every month.',
+    fix: 'Write down one sales number for 12 months from now, and what it means per month.',
+    effort: 'quick',
   },
   {
     id: 'strat_time',
@@ -1431,6 +1621,29 @@ export const QUESTIONS: Question[] = [
     solution: {
       services: ['erp'],
       text: "ERP puts processes and knowledge into the system instead of one person's head, and its reports show how much you depend on single {customers} or suppliers — before it becomes a risk.",
+    },
+  },
+  {
+    id: 'strat_top_customer',
+    section: 'strategy',
+    text: 'Roughly what share of your sales comes from your single biggest {customer}?',
+    type: 'number',
+    show: all(not(level('starting')), notIndustry('retail', 'food', 'hospitality')),
+    allowOther: false,
+    number: { min: 0, max: 100, unit: '%', placeholder: 'e.g. 20', score: upTo([[10, 100], [20, 80], [35, 50], [50, 25]], 5) },
+    options: [{ id: 'unsure', label: 'Not sure', score: 40 }],
+    strength: 'No single {customer} can sink you',
+    gap: 'Too much depends on one {customer}',
+    why: 'When one {customer} brings a big share of your sales, they control your cash flow and your prices — and losing them would hurt badly.',
+    fix: 'Set a target to win 3 new {customers} of a similar size this quarter, so no single one is more than 1 in every 5 rupees of sales.',
+    effort: 'big',
+    steps: [
+      "Look at your top 5 {customers}: what do they have in common? Go after more like them.",
+      "Agree a written contract or notice period with your biggest {customer}.",
+    ],
+    solution: {
+      services: ['marketing', 'erp'],
+      text: "Digital marketing — Google, LinkedIn and targeted campaigns — brings in new {customers} like your best ones, so you aren't tied to one. ERP shows each {customer}'s share of your sales and profit, so you see the risk early.",
     },
   },
   {

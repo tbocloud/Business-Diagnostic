@@ -116,7 +116,7 @@ export function ActionPlan({ plan, businessName }: { plan: Results['actionPlan']
                               </span>
                               <span className="mt-1.5 block text-[12.5px] leading-snug text-muted">Fixes: {item.title}</span>
                               <span className="mt-1 block">
-                                <AreaTag id={item.section} />
+                                <AreaTag id={item.section} title={item.sectionTitle} icon={item.sectionIcon} />
                               </span>
                             </span>
                           </label>

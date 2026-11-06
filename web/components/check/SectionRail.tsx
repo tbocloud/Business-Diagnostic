@@ -5,6 +5,7 @@ import { Check, ChevronDown, SkipForward, Store } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { SECTIONS } from '@/lib/sections';
+import { OPEN_STEP } from '@/lib/store';
 import type { RailState } from './flow';
 
 export interface RailItem {
@@ -26,6 +27,13 @@ export function buildRailItems(states: RailState[], currentStep: number, current
       state: states[i + 1],
       detail: currentStep === i + 1 ? currentDetail : undefined,
     })),
+    {
+      step: OPEN_STEP,
+      title: 'Anything else?',
+      icon: 'PenLine',
+      state: states[SECTIONS.length + 1],
+      detail: currentStep === OPEN_STEP ? currentDetail : undefined,
+    },
   ];
 }
 

@@ -1,4 +1,5 @@
 import { BRAND } from './brand';
+import { readOpenSignals } from './openSignals';
 import { fill, HEADACHES, headacheLabel, industryLabel, levelLabel, targetFor, teamLabel } from './profile';
 import { QUESTION_BY_ID, questionsFor } from './questions';
 import { SECTIONS, SECTION_BY_ID } from './sections';
@@ -10,6 +11,8 @@ import type {
   HealthBand,
   Insight,
   KeyPoint,
+  NumberFact,
+  OpenSignals,
   OwnWords,
   Profile,
   Question,
@@ -31,8 +34,13 @@ const PUSH_MARGIN = 12;
 // ── Per-question scoring ────────────────────────────────────
 
 /** 0–100 for an answered, scorable question; null when skipped / free-text only / neutral. */
-export function scoreQuestion(q: Question, a: Answer | undefined): number | null {
+export function scoreQuestion(q: Question, a: Answer | undefined, ctx?: Ctx): number | null {
   if (!a || a.skipped) return null;
+  if (q.type === 'number' && typeof a.value === 'number') {
+    // A figure scores through the question's bands; neutral figures (no `score`) count as answered only.
+    const s = q.number?.score && ctx ? q.number.score(a.value, ctx) : undefined;
+    return s === undefined ? null : Math.max(0, Math.min(100, Math.round(s)));
+  }
   const picked = q.options.filter((o) => a.selected.includes(o.id));
   if (picked.length === 0) return null; // "Other" text only — shown in notes, not scored
   if (q.type === 'single') return picked[0].score ?? null;
@@ -44,10 +52,25 @@ export function scoreQuestion(q: Question, a: Answer | undefined): number | null
 }
 
 export function isAnswered(a: Answer | undefined): boolean {
-  return !!a && !a.skipped && (a.selected.length > 0 || !!a.other?.trim());
+  return !!a && !a.skipped && (a.selected.length > 0 || !!a.other?.trim() || typeof a.value === 'number');
+}
+
+/** 12 → "12", 4.25 → "4.3", 150000 → "1,50,000" (Indian grouping). */
+export function formatFigure(n: number): string {
+  const rounded = Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 10) / 10;
+  return rounded.toLocaleString('en-IN', { maximumFractionDigits: 1 });
+}
+
+/** A number answer as the client would say it: "₹15,000 a month", "3 out of 10", "40%". */
+export function figureLabel(q: Question, value: number, profile: Profile): string {
+  const spec = q.number;
+  const unit = spec ? fill(spec.unit, profile) : '';
+  const joined = unit.startsWith('%') ? unit : unit ? ` ${unit}` : '';
+  return `${spec?.prefix ?? ''}${formatFigure(value)}${joined}`;
 }
 
 function answerLabel(q: Question, a: Answer, profile: Profile): string {
+  if (q.type === 'number' && typeof a.value === 'number') return figureLabel(q, a.value, profile);
   const labels = q.options.filter((o) => a.selected.includes(o.id)).map((o) => fill(o.label, profile));
   if (a.other?.trim()) labels.push(`“${a.other.trim()}”`);
   return labels.join(', ');
@@ -110,8 +133,9 @@ function sectionNote(r: Omit<SectionResult, 'note'>): string {
     : 'This area is well below where it should be for your stage.';
 }
 
+/** "Stock in the books…" → "stock in the books…"; "GST returns…" stays as it is. */
 function lower(s: string) {
-  return s ? s[0].toLowerCase() + s.slice(1) : s;
+  return s && !/^[A-Z]{2}/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
 }
 
 export function scoreSection(id: SectionId, ctx: Ctx): SectionResult {
@@ -133,7 +157,7 @@ export function scoreSection(id: SectionId, ctx: Ctx): SectionResult {
     if (a!.other?.trim()) {
       ownWords.push({ questionId: q.id, question: fill(q.text, ctx.profile), answer: a!.other.trim() });
     }
-    const score = scoreQuestion(q, a);
+    const score = scoreQuestion(q, a, ctx);
     if (score === null) continue;
     const w = q.weight ?? 2;
     weighted += score * w;
@@ -451,7 +475,32 @@ function buildKeyPoints(args: {
 
 // ── Services that fix the client's gaps ─────────────────────
 
-function recommendServices(gaps: Insight[], watch: Insight[]): ServiceRecommendation[] {
+/** Jobs from "Which jobs would you most like taken off your plate?" → the services that take them. */
+const OFFLOAD_SERVICES: Record<string, ServiceId[]> = {
+  replies: ['ai'],
+  followups: ['erp', 'ai'],
+  invoicing: ['erp'],
+  books: ['erp'],
+  stock: ['erp'],
+  scheduling: ['erp'],
+  reports: ['erp', 'ai'],
+  social: ['marketing', 'ai'],
+};
+/** How much one wish moves a service up — enough to reorder close calls, never to outrank a much bigger gap. */
+const WISH_WEIGHT = 120;
+
+/** Services the client asked for, once per mention: their wish list plus what they described at the end. */
+function serviceWishes(answers: Answers, open: OpenSignals): ServiceId[] {
+  const offload = answers.tech_offload;
+  const fromOffload = offload && !offload.skipped ? offload.selected.flatMap((id) => OFFLOAD_SERVICES[id] ?? []) : [];
+  return [...fromOffload, ...open.services];
+}
+
+/**
+ * Services that fix the gaps, most relevant first. `wishes` nudge close calls; `first` — the services
+ * fitting what the client described at the end — lead, as long as they fix at least one gap.
+ */
+function recommendServices(gaps: Insight[], watch: Insight[], wishes: ServiceId[] = [], first: ServiceId[] = []): ServiceRecommendation[] {
   const recs = new Map<ServiceId, ServiceRecommendation>();
   for (const i of [...gaps, ...watch]) {
     for (const id of i.solution?.services ?? []) {
@@ -462,20 +511,237 @@ function recommendServices(gaps: Insight[], watch: Insight[]): ServiceRecommenda
       recs.set(id, rec);
     }
   }
-  return [...recs.values()].sort((a, b) => b.weight - a.weight);
+  // Only services that already fix a gap get the nudge, so every card still has gaps to show.
+  for (const id of wishes) {
+    const rec = recs.get(id);
+    if (rec) rec.weight += WISH_WEIGHT;
+  }
+  const leads = (id: ServiceId) => (first.includes(id) ? 1 : 0);
+  return [...recs.values()].sort((a, b) => leads(b.id) - leads(a.id) || b.weight - a.weight);
+}
+
+// ── "Your numbers" ──────────────────────────────────────────
+
+/** The figure for a number question the client was asked and answered with a figure. */
+function figureOf(id: string, ctx: Ctx): number | undefined {
+  const q = QUESTION_BY_ID[id];
+  const a = ctx.answers[id];
+  if (!q || !a || a.skipped || typeof a.value !== 'number') return undefined;
+  if (q.show && !q.show(ctx)) return undefined;
+  return a.value;
+}
+
+/** good / warn / gap from the question's own score bands, or neutral when it isn't scored. */
+function toneOf(id: string, ctx: Ctx): NumberFact['tone'] {
+  const q = QUESTION_BY_ID[id];
+  const score = q ? scoreQuestion(q, ctx.answers[id], ctx) : null;
+  if (score === null) return 'neutral';
+  return score >= STRENGTH_AT ? 'good' : score < GAP_BELOW ? 'gap' : 'warn';
+}
+
+const f = formatFigure;
+const rupees = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+/**
+ * The maths behind the number questions, in the client's own figures: enquiries that walk
+ * away, cost per enquiry, admin days a year, days money sits with {customers}, and so on.
+ */
+export function numberFacts(profile: Profile, answers: Answers): NumberFact[] {
+  const ctx: Ctx = { profile, answers };
+  const v = (id: string) => figureOf(id, ctx);
+  const t = (text: string) => fill(text, profile);
+  const facts: NumberFact[] = [];
+
+  const enquiries = v('sales_enquiries');
+  const convert = v('sales_convert');
+  if (convert !== undefined && enquiries !== undefined && enquiries > 0) {
+    const won = (enquiries * convert) / 10;
+    const lost = Math.max(0, enquiries - won);
+    facts.push({
+      id: 'lost_enquiries',
+      icon: 'UserMinus',
+      label: 'Enquiries that walk away',
+      big: `≈ ${f(lost)} a month`,
+      note: t(
+        `About ${f(enquiries)} enquiries a month, and ${f(convert)} in 10 buy. ` +
+          (convert < 10 ? `Winning just one more in every 10 would mean about ${f(enquiries / 10)} more {customers} a month.` : 'Every enquiry becomes a sale — impressive.'),
+      ),
+      tone: toneOf('sales_convert', ctx),
+      section: 'sales',
+    });
+  } else if (convert !== undefined) {
+    facts.push({
+      id: 'conversion',
+      icon: 'Target',
+      label: 'Enquiries that buy',
+      big: `${f(convert)} in 10`,
+      note: t(convert >= 4 ? 'A healthy share of enquiries become {customers}.' : 'Most enquiries leave without buying — follow-up is usually the cheapest fix.'),
+      tone: toneOf('sales_convert', ctx),
+      section: 'sales',
+    });
+  }
+
+  const spend = v('mkt_spend');
+  if (spend !== undefined && spend > 0 && enquiries !== undefined && enquiries > 0) {
+    const won = convert !== undefined ? (enquiries * convert) / 10 : 0;
+    facts.push({
+      id: 'cost_per_enquiry',
+      icon: 'IndianRupee',
+      label: 'Marketing cost per enquiry',
+      big: rupees(spend / enquiries),
+      note: t(
+        `${rupees(spend)} a month on marketing for about ${f(enquiries)} enquiries.` +
+          (won >= 1 ? ` Each new {customer} costs you about ${rupees(spend / won)}.` : ''),
+      ),
+      tone: 'neutral',
+      section: 'marketing',
+    });
+  }
+
+  const reviews = v('mkt_reviews');
+  const rating = v('mkt_rating');
+  if (reviews !== undefined) {
+    facts.push({
+      id: 'reviews',
+      icon: 'Star',
+      label: 'Google reviews',
+      big: rating !== undefined && reviews > 0 ? `${f(reviews)} · ${rating.toFixed(1)}★` : f(reviews),
+      note:
+        reviews >= 50
+          ? 'Enough reviews to win trust at a glance.'
+          : t(`Businesses with 50+ reviews look far safer to new {customers}. You need about ${f(Math.max(0, 50 - reviews))} more.`),
+      tone: toneOf('mkt_reviews', ctx),
+      section: 'marketing',
+    });
+  }
+
+  const repeat = v('sales_repeat');
+  if (repeat !== undefined) {
+    facts.push({
+      id: 'repeat',
+      icon: 'Repeat',
+      label: t('Sales from repeat {customers}'),
+      big: `${f(repeat)}%`,
+      note: t(
+        repeat >= 50
+          ? 'Most of your sales come back on their own — the cheapest growth there is.'
+          : `${f(100 - repeat)}% of sales have to be won from scratch every time.`,
+      ),
+      tone: toneOf('sales_repeat', ctx),
+      section: 'sales',
+    });
+  }
+
+  const admin = v('ops_admin');
+  if (admin !== undefined && admin > 0) {
+    const days = (admin * 48) / 8; // 48 working weeks, 8-hour days
+    facts.push({
+      id: 'admin_time',
+      icon: 'Clock',
+      label: 'Your own time on admin',
+      big: `≈ ${f(days)} days a year`,
+      note: `${f(admin)} hours a week adds up to about ${f(days)} full working days a year — time that could go into selling or growing.`,
+      tone: toneOf('ops_admin', ctx),
+      section: 'operations',
+    });
+  }
+
+  const paidIn = v('fin_collect');
+  if (paidIn !== undefined) {
+    facts.push({
+      id: 'days_to_pay',
+      icon: 'CalendarClock',
+      label: 'Time to get paid',
+      big: `${f(paidIn)} days`,
+      note: t(
+        paidIn <= 15
+          ? 'Money comes in quickly — good for cash flow.'
+          : `About ${f(paidIn / 30)} month${paidIn / 30 >= 1.5 ? 's' : ''} of your sales is always sitting with {customers} instead of in your bank.`,
+      ),
+      tone: toneOf('fin_collect', ctx),
+      section: 'finance',
+    });
+  }
+
+  const margin = v('fin_margin');
+  if (margin !== undefined) {
+    facts.push({
+      id: 'margin',
+      icon: 'PiggyBank',
+      label: 'Profit from every ₹100 of sales',
+      big: margin < 0 ? `−₹${f(-margin)}` : `₹${f(margin)}`,
+      note:
+        margin <= 0
+          ? 'Right now each sale loses money once every cost is counted.'
+          : `For every ₹1 lakh of sales, about ${rupees(margin * 1000)} is profit.`,
+      tone: toneOf('fin_margin', ctx),
+      section: 'finance',
+    });
+  }
+
+  const stay = v('team_keep');
+  if (stay !== undefined) {
+    facts.push({
+      id: 'retention',
+      icon: 'UserCheck',
+      label: 'New hires still with you after a year',
+      big: `${f(stay)} in 10`,
+      note: stay >= 8 ? 'Good people stay — your know-how stays with them.' : `${f(10 - stay)} in every 10 people you hire leave within a year, taking their training with them.`,
+      tone: toneOf('team_keep', ctx),
+      section: 'team',
+    });
+  }
+
+  const top = v('strat_top_customer');
+  if (top !== undefined) {
+    facts.push({
+      id: 'top_customer',
+      icon: 'Users',
+      label: t('Sales from your biggest {customer}'),
+      big: `${f(top)}%`,
+      note: t(
+        top > 35
+          ? `Losing them would cut your sales by about ${f(top)}% overnight.`
+          : top > 20
+            ? 'Worth spreading out — aim for no single {customer} above 20%.'
+            : 'Well spread — no single {customer} can sink you.',
+      ),
+      tone: toneOf('strat_top_customer', ctx),
+      section: 'strategy',
+    });
+  }
+
+  const growth = v('strat_growth');
+  if (growth !== undefined && growth > 0) {
+    facts.push({
+      id: 'growth',
+      icon: 'TrendingUp',
+      label: 'Your growth target',
+      big: `+${f(growth)}%`,
+      note: 'In the next 12 months. The gaps in this report are where that growth can come from.',
+      tone: 'neutral',
+      section: 'strategy',
+    });
+  }
+
+  return facts;
 }
 
 // ── Everything together ─────────────────────────────────────
 
 export function computeResults(profile: Profile, answers: Answers): Results {
   const ctx: Ctx = { profile, answers };
+  const open = readOpenSignals(answers);
   const sections = SECTIONS.map((s) => scoreSection(s.id, ctx));
   const scored = sections.filter((s) => s.score !== null);
   const overall = scored.length ? Math.round(scored.reduce((sum, s) => sum + s.score!, 0) / scored.length) : null;
 
-  const bySeverity = (a: Insight, b: Insight) => b.severity - a.severity;
-  const allGaps = sections.flatMap((s) => s.gaps).sort(bySeverity);
-  const allWatch = sections.flatMap((s) => s.watch).sort(bySeverity);
+  // What the client described at the end leads the report — without quoting a word of it: gaps in
+  // the areas they talked about come first (top gaps, "most urgent issue", the 7/30/90-day plan).
+  const described = (i: Insight) => (open.areas.includes(i.section) ? 1 : 0);
+  const byPriority = (a: Insight, b: Insight) => described(b) - described(a) || b.severity - a.severity;
+  const allGaps = sections.flatMap((s) => s.gaps).sort(byPriority);
+  const allWatch = sections.flatMap((s) => s.watch).sort(byPriority);
   const allStrengths = sections
     .flatMap((s) => s.strengths)
     .sort((a, b) => b.score * b.weight - a.score * a.weight);
@@ -501,7 +767,7 @@ export function computeResults(profile: Profile, answers: Answers): Results {
         (quickWins ? ` — ${quickWins} of them ${quickWins === 1 ? 'is a quick win' : 'are quick wins'} you can start this week.` : '.');
 
   const potential = potentialScore(sections);
-  const services = recommendServices(allGaps, allWatch);
+  const services = recommendServices(allGaps, allWatch, serviceWishes(answers, open), open.services);
   const keyPoints = buildKeyPoints({
     profile,
     overall,
@@ -533,6 +799,7 @@ export function computeResults(profile: Profile, answers: Answers): Results {
     keyPoints,
     potential,
     services,
+    numbers: numberFacts(profile, answers),
     stats: {
       asked,
       answered,

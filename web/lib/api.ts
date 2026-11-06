@@ -3,7 +3,7 @@
 // with NEXT_PUBLIC_API_BASE, e.g. http://localhost:8080.
 // ─────────────────────────────────────────────────────────────
 
-import type { Answers, Profile } from './types';
+import type { Answers, OpenSignals, Profile } from './types';
 
 import { BASE_PATH } from './basePath';
 
@@ -40,6 +40,10 @@ async function call<T>(path: string, init?: { method?: 'GET' | 'POST'; body?: un
   } catch {
     throw new ApiError('Can’t reach the server. Check your connection and try again.', 0);
   }
+  return readResponse<T>(res);
+}
+
+async function readResponse<T>(res: Response): Promise<T> {
   let data: unknown = null;
   try {
     data = await res.json();
@@ -51,6 +55,17 @@ async function call<T>(path: string, init?: { method?: 'GET' | 'POST'; body?: un
     throw new ApiError(msg, res.status);
   }
   return data as T;
+}
+
+/** A multipart POST (file uploads). The token in the form proves the check-up is the caller's. */
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/${path}`, { method: 'POST', credentials: 'same-origin', body: form, cache: 'no-store' });
+  } catch {
+    throw new ApiError('Can’t reach the server. Check your connection and try again.', 0);
+  }
+  return readResponse<T>(res);
 }
 
 // ── Public (client side of the check) ───────────────────────
@@ -78,13 +93,64 @@ export interface SubmissionSummary {
 }
 
 export const publicApi = {
-  submit: (body: { submissionId?: number; token?: string; profile: Profile; answers: Answers; summary: SubmissionSummary }) =>
+  submit: (body: {
+    submissionId?: number;
+    token?: string;
+    profile: Profile;
+    answers: Answers;
+    summary: SubmissionSummary;
+    openText?: string;
+  }) =>
     call<{ submissionId: number; token: string }>('submit.php', { body }),
   saveContact: (body: { submissionId: number; token: string; name?: string; phone?: string; email?: string }) =>
     call<{ ok: true }>('save-contact.php', { body }),
   /** A report opened from its short link (/results/#id=…&k=…), e.g. from the CRM. POST keeps the key out of URLs/logs. */
   report: (id: string, k: string) =>
-    call<{ profile: unknown; answers: unknown; completedAt: string | null }>('report.php', { body: { id, k } }),
+    call<{ kind?: 'health' | 'deep' | 'erp'; profile?: unknown; details?: unknown; answers: unknown; completedAt: string | null }>(
+      'report.php',
+      { body: { id, k } },
+    ),
+};
+
+// ── Stage 2 and the ERP check ───────────────────────────────
+
+export const checkApi = {
+  /** Save (or re-save) a Stage 2 or ERP check. parentId/parentToken: the Stage 1 check on this device. */
+  submit: (body: {
+    kind: 'deep' | 'erp';
+    submissionId?: number;
+    token?: string;
+    parentId?: number;
+    parentToken?: string;
+    details: { businessName?: string; ownerName?: string; phone?: string; email?: string };
+    answers: Answers;
+    summary: { points: string[] };
+    openText?: string;
+  }) => call<{ submissionId: number; token: string }>('submit-check.php', { body }),
+};
+
+// ── "Anything else on your mind?" — the last, open step ─────
+
+export const openApi = {
+  /** The client's note. Returns which areas and services it touches (tags only, for the report; empty when the AI is off). */
+  note: (body: { submissionId: number; token: string; text: string }) =>
+    call<{ ok: true; signals: OpenSignals }>('open-problems.php', { body }),
+  /** A voice note (replaces an earlier one). Returns its tags for the report (the words stay with the team). */
+  voice: (args: { submissionId: number; token: string; audio: Blob; fileName: string; seconds: number }) => {
+    const form = new FormData();
+    form.set('submissionId', String(args.submissionId));
+    form.set('token', args.token);
+    form.set('seconds', String(Math.round(args.seconds)));
+    form.set('audio', args.audio, args.fileName);
+    return upload<{ ok: true; signals: OpenSignals }>('voice-note.php', form);
+  },
+  removeVoice: (args: { submissionId: number; token: string }) => {
+    const form = new FormData();
+    form.set('submissionId', String(args.submissionId));
+    form.set('token', args.token);
+    form.set('remove', '1');
+    return upload<{ ok: true; signals: OpenSignals }>('voice-note.php', form);
+  },
 };
 
 // ── Admin panel ─────────────────────────────────────────────

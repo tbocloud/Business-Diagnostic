@@ -5,6 +5,8 @@
 #    + PHP's built-in web server for the site and the API.
 #
 #  Usage:  ./dev/run-local.sh          then open http://localhost:8080
+#          MOCK_AI=1 ./dev/run-local.sh   also starts a fake AI (dev/mock-ai.php) so the last
+#                                        step's note summary works without a real OpenAI key
 #  Stop:   Ctrl+C  (the database keeps running; `docker stop bhc-local-db` to stop it)
 #  Reset:  docker rm -f bhc-local-db && docker volume rm bhc-local-data
 #
@@ -55,6 +57,24 @@ until docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal -e 'SELECT 1 F
 done
 echo ' ready.'
 
+# Databases created before a newer db/*.sql file: apply what's missing (each file runs once),
+# found by a column the file adds.
+for migration in "003_open_problems.sql:open_voice" "004_more_checks.sql:check_type"; do
+  file="${migration%%:*}"; column="${migration##*:}"
+  if ! docker exec bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic \
+       -e "SELECT $column FROM submissions LIMIT 1" >/dev/null 2>&1; then
+    echo "Applying db/$file to your local database…"
+    docker exec -i bhc-local-db mariadb -h127.0.0.1 -uroot -plocal biz_diagnostic < "db/$file"
+  fi
+done
+
+if [ "${MOCK_AI:-}" = "1" ]; then
+  AI_PORT="${AI_PORT:-8098}"
+  php -S "127.0.0.1:$AI_PORT" dev/mock-ai.php >/dev/null 2>&1 &
+  trap 'kill $! 2>/dev/null || true' EXIT
+  export OPENAI_API_KEY=mock-key AI_BASE_URL="http://127.0.0.1:$AI_PORT"
+fi
+
 [ -f index.html ] || (cd web && npm install && npm run deploy)
 
 # Serve the site under the same sub-folder as the live host (web/.env.production → NEXT_PUBLIC_BASE_PATH),
@@ -71,8 +91,13 @@ fi
 echo
 echo "  Website:    http://localhost:$WEB_PORT$BASE_PATH/"
 echo "  BDE panel:  http://localhost:$WEB_PORT$BASE_PATH/admin/   (first time: setup code \"$SETUP_TOKEN\")"
+if [ -n "${OPENAI_API_KEY:-}" ]; then
+  echo "  Note summaries (last step): on — ${AI_BASE_URL:-https://api.openai.com/v1}"
+else
+  echo "  Note summaries (last step): off — MOCK_AI=1 for a fake AI, or set OPENAI_API_KEY"
+fi
 echo
 
 DB_HOST=127.0.0.1 DB_PORT="$DB_PORT_LOCAL" DB_USER=root DB_PASSWORD=local DB_NAME=biz_diagnostic \
 SETUP_TOKEN="$SETUP_TOKEN" PHP_CLI_SERVER_WORKERS=4 \
-  exec php -S "localhost:$WEB_PORT" -t "$DOCROOT"
+  php -S "localhost:$WEB_PORT" -t "$DOCROOT"

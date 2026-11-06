@@ -33,14 +33,32 @@ export function buildSummary(profile: Profile, results: Results): SubmissionSumm
   };
 }
 
+/** The check-up's id + token, saving it first if it isn't saved yet; null when the server can't be reached. */
+export async function ensureSubmission(): Promise<{ id: number; token: string } | null> {
+  let { submissionId, submissionToken } = useCheck.getState();
+  if (!submissionId || !submissionToken) {
+    await syncSubmission();
+    ({ submissionId, submissionToken } = useCheck.getState());
+  }
+  return submissionId && submissionToken ? { id: submissionId, token: submissionToken } : null;
+}
+
 let inFlight: Promise<boolean> | null = null;
+let queued: Promise<boolean> | null = null;
 
 /**
  * Save (or re-save) this browser's finished check-up to the team's database.
  * Never throws: the client's own report works even when the server can't be reached.
+ * A call made while a save is running queues one more save, so the newest answers always land.
  */
 export function syncSubmission(): Promise<boolean> {
-  if (inFlight) return inFlight;
+  if (inFlight) {
+    queued ??= inFlight.then(() => {
+      queued = null;
+      return syncSubmission();
+    });
+    return queued;
+  }
   const s = useCheck.getState();
   const profile: Profile = s.profile;
   const answers: Answers = s.answers;
@@ -53,6 +71,8 @@ export function syncSubmission(): Promise<boolean> {
       profile,
       answers,
       summary: buildSummary(profile, results),
+      // The note from the last step also travels with the check-up, in case sending it on its own failed.
+      ...(s.open.text.trim() ? { openText: s.open.text.trim().slice(0, 3000) } : {}),
     })
     .then(({ submissionId, token }) => {
       useCheck.getState().setSubmission(submissionId, token);

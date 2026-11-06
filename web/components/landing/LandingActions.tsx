@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowRight, FileText, History } from 'lucide-react';
+import { ArrowRight, Boxes, FileText, History } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useHasHydrated } from '@/hooks/useHasHydrated';
@@ -54,6 +55,18 @@ export function LandingActions() {
           </ButtonLink>
         ) : null}
       </div>
+
+      {/* Only here for an ERP? A short check of its own. */}
+      <Link
+        href="/erp"
+        className="group mt-4 inline-flex max-w-xl items-center gap-2.5 rounded-xl border border-line bg-card px-3.5 py-2.5 text-[14px] text-ink-2 shadow-card transition-colors hover:border-brand"
+      >
+        <Boxes className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+        <span>
+          <strong className="font-semibold text-ink">Only looking at ERP?</strong> Find the gaps in your current system — 6 minutes
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-brand transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </Link>
 
       {confirming && (
         <div

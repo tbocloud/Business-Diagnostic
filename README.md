@@ -38,8 +38,8 @@ Then, in phpMyAdmin, select the database and open the **SQL** tab.
 
 | Situation | Run |
 |---|---|
-| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, then `db/002_crm_link.sql`, **once each** |
-| **Fresh install** | `db/000_create_submissions.sql`, `db/001_health_check_v2.sql`, then `db/002_crm_link.sql` |
+| **Upgrading the live site** (the `submissions` table already exists) | `db/001_health_check_v2.sql`, `db/002_crm_link.sql`, `db/003_open_problems.sql`, then `db/004_more_checks.sql`, **once each, in that order** |
+| **Fresh install** | `db/000_create_submissions.sql`, then `001`, `002`, `003` and `004` |
 
 The upgrade keeps every existing row. Old submissions are marked **legacy** and still show in the panel with their old scores and AI analysis.
 
@@ -80,7 +80,7 @@ define('DB_NAME',     'biz_diagnostic');
 define('SETUP_TOKEN', 'choose-a-long-secret');
 ```
 
-The OpenAI key is no longer used and can be removed. Anything missing falls back to environment variables with the same names (see `.env.example`).
+`OPENAI_API_KEY` is optional: it switches on the AI summary and the voice-note transcript of the last step (see "The last step" below). Without it, notes and voice notes are still saved and sent to the CRM, just not summarised. Anything missing falls back to environment variables with the same names (see `.env.example`).
 
 > **Which wins, `config.php` or environment variables?** If the server has a **`DB_HOST` environment variable**, `api/config.php` is **not loaded at all**, and every setting must then come from environment variables (`DB_*`, `SETUP_TOKEN`, `CRM_*`, `SITE_URL`). This is how local runs (`dev/run-local.sh`) avoid touching the live database. Normal cPanel hosting sets no `DB_HOST` variable, so `config.php` is used as before.
 
@@ -134,6 +134,31 @@ Every finished check creates a **Business Health Check** record in the CRM with 
 - the settings for `api/config.php`
 - `db/002_crm_link.sql`
 - the retry cron job
+
+## Three checks
+
+| Check | Where | What it is |
+|---|---|---|
+| **Stage 1** — the Business Health Check | `/check/` → `/results/` | Multiple-choice and number questions in 8 areas, the last step, and the report |
+| **Stage 2** — your real numbers | `/deep/` → `/deep/results/`, offered on the Stage 1 report | The business's own figures: the stage it is really at and what holds it there, profit and break-even, growth ideas worth rupees, customer quality, cash. Stage 1 answers carry over |
+| **ERP check** | `/erp/` → `/erp/results/`, from the start page ("Only looking at ERP?") or after Stage 1 | The gaps their current system leaves in accounts & GST, billing, stock, purchase, production, payroll and control — the hours they cost, and the ERPNext plan (Phase 1/2 modules, rough timeline) |
+
+**All three reports look and work the same.** Stage 2 and the ERP check turn their scored answers into the same `Results` as Stage 1 (`web/lib/reportKit.ts`: `deepReport()` in `deep.ts`, `erpReport()` in `erp.ts`), so they get the Stage 1 report: score, areas with "What to do", key points, the real gap, strengths and gaps, the 7 / 30 / 90-day plan, "How we help", the callback form, PDF and a share link (`#r=…`, `web/lib/checkShare.ts`). Each adds its own sections: Stage 2 its stage, where every ₹100 goes and growth ideas in rupees; the ERP check its ERPNext plan.
+
+Stage 2 and the ERP check are saved by `api/submit-check.php` (`check_type` `deep` / `erp`, joined to the Stage 1 check on the same device). They stay out of the BDE panel: the team sees them on the CRM record (report link + summary each).
+
+**One client, one CRM record.** Every check lands on the client's existing record: the Stage 1 check on the same device, else a record with the same email, the same phone (however it was typed), or the same business name *and* contact name. When contact details given later ("Call me back") show the client was already on another record, the records are merged into the oldest (the DocType's `merge_into`).
+
+## The last step: "Anything else on your mind?"
+
+After the eight areas, the client can write a note about other problems, in their own words, or **record a voice note** instead (up to 3 minutes, any language) — whichever is easier. It all goes to the team only — the CRM record's **Client's Own Words** (the note, and what the voice note says, written down by the AI on the server — the client never sees that), a **Problem Summary** of short points covering both, and the recording as a private **Voice Note** attachment. The report never quotes any of it, but it leads with it: gaps in the areas they talked about come first (top gaps, the "most urgent issue", the 7/30/90-day plan) and the services that fit come first in "How we help". Scores don't change.
+
+Recordings wait in `api/uploads/voice/` (blocked from the web by `.htaccess`, ignored by git) until they are attached to the CRM record, then are deleted there.
+
+- Needs `db/003_open_problems.sql`.
+- The summary and the voice transcript need `OPENAI_API_KEY` in `api/config.php` (the same setting the old GPT site used; models `gpt-4o-mini` and `gpt-4o-mini-transcribe`, change with `AI_MODEL` / `AI_TRANSCRIBE_MODEL`). Without a key, notes and recordings are still saved and sent, without a summary or transcript.
+- Voice notes need PHP uploads of at least 4 MB (`php api/cron/check-crm.php` warns), and the CRM's DocType must have the `attach_voice_note` method (tbocloud/helpdesk).
+- Locally: `MOCK_AI=1 ./dev/run-local.sh` starts a fake AI (`dev/mock-ai.php`), so the summary works with no key and no cost.
 
 ## Changing the website
 

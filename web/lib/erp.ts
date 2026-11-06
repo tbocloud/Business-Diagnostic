@@ -1,0 +1,855 @@
+import { type FormAnswers, type FormCtx, type FormField, type FormSection, fieldAnswerLabel, fieldScore, num, picked, visibleFields, visibleSections } from './forms';
+import { INDUSTRIES } from './profile';
+import { buildResults, type KitArea, type KitFinding } from './reportKit';
+import type { Effort, IndustryId, NumberFact, Profile, Results, ServiceId } from './types';
+
+// ─────────────────────────────────────────────────────────────
+// THE ERP CHECK — like the Stage 1 areas, but only about how the business runs on its
+// systems: accounts & GST, sales & billing, stock, purchase, production & projects,
+// people & payroll, control & reports. Every question uncovers a real gap the current
+// setup leaves open, and the report shows what ERPNext closes, area by area.
+// ─────────────────────────────────────────────────────────────
+
+const industryOf = (c: FormCtx): IndustryId | undefined =>
+  c.profile?.industry ?? (c.answers.erp_industry?.selected[0] as IndustryId | undefined);
+const inIndustry = (...ids: IndustryId[]) => (c: FormCtx) => {
+  const i = industryOf(c);
+  return !i || ids.includes(i);
+};
+const notIndustry = (...ids: IndustryId[]) => (c: FormCtx) => {
+  const i = industryOf(c);
+  return !i || !ids.includes(i);
+};
+
+/** Module ids → names shown in the plan. */
+export const MODULES: Record<string, string> = {
+  accounts: 'Accounts & GST',
+  sales: 'Selling & billing',
+  stock: 'Stock & warehouses',
+  purchase: 'Buying & suppliers',
+  manufacturing: 'Manufacturing',
+  projects: 'Projects & job costing',
+  hr: 'HR & payroll',
+  dashboards: 'Live dashboards & reports',
+  control: 'Roles, approvals & audit trail',
+  multi: 'Multi-branch & multi-company',
+};
+const CORE = ['accounts', 'sales', 'stock', 'purchase'];
+
+const q = (f: Omit<FormField, 'kind'>): FormField => ({ ...f, kind: 'single' });
+
+/** Lower is better: the first band whose limit the figure is within wins, e.g. [[2, 100], [6, 70]]. */
+const upTo = (bands: [number, number][], above: number) => (n: number) => {
+  for (const [max, score] of bands) if (n <= max) return score;
+  return above;
+};
+
+export const ERP_SECTIONS: FormSection[] = [
+  {
+    id: 'setup',
+    title: 'Your setup today',
+    short: 'Setup',
+    icon: 'Laptop',
+    intro: 'What the business runs on now — so the rest of the check, and your ERP plan, fit you.',
+    fields: [
+      {
+        id: 'erp_industry',
+        kind: 'single',
+        text: 'What kind of business is it?',
+        show: (c) => !c.profile?.industry,
+        options: INDUSTRIES.map((i) => ({ id: i.id, label: i.label })),
+      },
+      {
+        id: 'erp_current',
+        kind: 'single',
+        text: 'Which software runs your accounts and billing today?',
+        allowOther: true,
+        options: [
+          { id: 'tally', label: 'Tally' },
+          { id: 'busy', label: 'Busy or Marg' },
+          { id: 'zoho', label: 'Zoho Books' },
+          { id: 'quickbooks', label: 'QuickBooks' },
+          { id: 'excel', label: 'Excel, notebooks or paper' },
+          { id: 'outside', label: 'Our CA or accountant does it outside' },
+          { id: 'erp', label: 'Another ERP (SAP B1, Odoo, a custom one…)' },
+        ],
+      },
+      { id: 'erp_users', kind: 'number', text: 'How many people would log in to the system?', hint: 'Billing, stores, accounts, sales, managers — everyone who would use it.', number: { min: 1, max: 10000, unit: 'people', placeholder: 'e.g. 6' }, options: [{ id: 'unsure', label: 'Not sure' }] },
+      { id: 'erp_sites', kind: 'number', text: 'How many branches, shops, godowns or factories do you run?', number: { min: 1, max: 1000, unit: 'locations', placeholder: 'e.g. 2' }, options: [{ id: 'unsure', label: 'Not sure' }] },
+    ],
+  },
+  {
+    id: 'accounts',
+    title: 'Accounts & GST',
+    short: 'Accounts',
+    icon: 'Wallet',
+    intro: 'Whether your books keep up with the business on their own — or need people to keep typing and matching.',
+    fields: [
+      q({
+        id: 'erp_acc_entry',
+        text: 'How does a sales or purchase bill get into your accounts?',
+        options: [
+          { id: 'auto', label: 'On its own — billing and accounts are one system', score: 100 },
+          { id: 'import', label: 'We export it from billing and import it into accounts', score: 55 },
+          { id: 'retype', label: 'Our accountant types it in again', score: 20 },
+          { id: 'late', label: 'It’s entered weeks later, in a batch', score: 5 },
+        ],
+        insight: {
+          gap: 'Every bill is typed twice — once to sell, once to account',
+          strength: 'Bills flow into the accounts by themselves',
+          why: 'Typing the same bill twice costs hours every week, and every re-typed bill is a chance for a wrong amount or a missed entry.',
+          fix: 'In ERPNext the invoice is the accounting entry: sales, GST and the ledgers update the moment you bill.',
+          module: 'accounts',
+          hours: { import: 4, retype: 12, late: 16 },
+        },
+      }),
+      {
+        id: 'erp_acc_gst',
+        kind: 'number',
+        text: 'How many hours a month go into preparing your GST returns?',
+        hint: 'Your team’s time and your accountant’s, roughly.',
+        number: { min: 0, max: 500, unit: 'hours a month', placeholder: 'e.g. 12', score: upTo([[2, 100], [6, 70], [12, 40], [24, 15]], 5) },
+        options: [{ id: 'ca', label: 'Our CA does it — we don’t know', score: 35 }],
+        insight: {
+          gap: 'GST returns take hours of matching by hand',
+          strength: 'GST returns are quick and accurate',
+          why: 'Hours spent matching bills every month — and mistakes there mean notices, interest and lost input credit.',
+          fix: 'GSTR-1 and GSTR-3B come straight from your invoices, with e-invoice (IRN) and e-way bills made from the same bill.',
+          module: 'accounts',
+          hoursFromValue: true,
+          hours: { ca: 6 },
+        },
+      },
+      {
+        id: 'erp_acc_close',
+        kind: 'number',
+        text: 'How many days after a month ends can you see that month’s profit?',
+        number: { min: 0, max: 365, unit: 'days after month-end', placeholder: 'e.g. 20', score: upTo([[2, 100], [7, 75], [20, 40], [45, 15]], 5) },
+        options: [{ id: 'year', label: 'Only at year-end', score: 5 }],
+        insight: {
+          gap: 'You see your profit weeks late — or once a year',
+          strength: 'Profit is visible within days',
+          why: 'Decisions about prices, staff and stock are made on guesswork when the real numbers arrive weeks later.',
+          fix: 'Profit & loss, balance sheet and cash flow are live — by branch, product or customer — without waiting for month-end.',
+          module: 'dashboards',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sales',
+    title: 'Sales & billing',
+    short: 'Sales',
+    icon: 'ShoppingBag',
+    intro: 'How an order moves from the first quote to the money in the bank — and how much of it depends on people remembering.',
+    fields: [
+      q({
+        id: 'erp_sal_flow',
+        text: 'How does an order move from quote to invoice?',
+        options: [
+          { id: 'system', label: 'Quote → order → delivery → invoice, all in one system', score: 100 },
+          { id: 'split', label: 'Quotes in Word or Excel, invoices in billing software', score: 45 },
+          { id: 'whatsapp', label: 'Orders come on WhatsApp or phone; we make a bill at the end', score: 20 },
+          { id: 'varies', label: 'Every salesperson does it their own way', score: 10 },
+        ],
+        insight: {
+          gap: 'Quotes, orders and bills live in different places',
+          strength: 'One clean flow from quote to invoice',
+          why: 'When quotes, orders and bills don’t connect, orders get missed, delivered wrong or billed late.',
+          fix: 'One flow: quotation → sales order → delivery note → invoice, each made from the last in one click, nothing typed twice.',
+          module: 'sales',
+          hours: { split: 6, whatsapp: 10, varies: 10 },
+        },
+      }),
+      q({
+        id: 'erp_sal_due',
+        text: 'How do you know which customers owe you money today?',
+        options: [
+          { id: 'live', label: 'A live list showing how overdue each one is', score: 100 },
+          { id: 'ask', label: 'We ask the accountant', score: 40 },
+          { id: 'memory', label: 'From memory, a notebook or WhatsApp', score: 10 },
+          { id: 'late', label: 'We notice when they haven’t paid', score: 0 },
+        ],
+        insight: {
+          gap: 'Nobody sees who owes you money until it’s late',
+          strength: 'You always know who owes you, and how much',
+          why: 'Money owed to you that nobody is watching gets paid late — or not at all — and your cash runs short.',
+          fix: 'Live receivables with ageing, credit limits and automatic payment reminders on email and WhatsApp.',
+          module: 'accounts',
+          hours: { ask: 3, memory: 6, late: 6 },
+        },
+      }),
+      {
+        id: 'erp_sal_late',
+        kind: 'number',
+        text: 'Roughly what % of your credit sales get paid late?',
+        number: { min: 0, max: 100, unit: '% paid late', placeholder: 'e.g. 30', score: upTo([[10, 100], [25, 65], [50, 30]], 10) },
+        options: [
+          { id: 'cash', label: 'We only sell for cash or upfront' },
+          { id: 'unsure', label: 'Not sure', score: 30 },
+        ],
+        insight: {
+          gap: 'Too many customers pay late',
+          strength: 'Customers pay on time',
+          why: 'Every late payment is your money funding someone else’s business — and the chasing eats your team’s time.',
+          fix: 'Credit limits that stop new orders for overdue customers, and reminders that go out on their own before and after the due date.',
+          module: 'sales',
+        },
+      },
+    ],
+  },
+  {
+    id: 'stock',
+    title: 'Stock & warehouses',
+    short: 'Stock',
+    icon: 'Boxes',
+    show: notIndustry('services', 'tech', 'education'),
+    intro: 'Whether the stock in your books is the stock on your shelves — and whether you know what to buy, and what is stuck.',
+    fields: [
+      {
+        id: 'erp_stk_off',
+        kind: 'number',
+        text: 'When you count your stock, roughly what % of items don’t match the books?',
+        number: { min: 0, max: 100, unit: '% of items off', placeholder: 'e.g. 10', score: upTo([[2, 100], [5, 75], [15, 40]], 10) },
+        options: [
+          { id: 'none', label: 'Stock isn’t kept in the books', score: 0 },
+          { id: 'never', label: 'We never count', score: 10 },
+        ],
+        insight: {
+          gap: 'Stock in the books doesn’t match the shelf',
+          strength: 'Books and shelves agree',
+          why: 'When the books are wrong, you run out of what sells, over-buy what doesn’t, and losses go unnoticed.',
+          fix: 'Every sale, purchase, return and transfer moves stock as it happens — by batch, serial number and location.',
+          module: 'stock',
+          hours: { none: 8, never: 4 },
+        },
+      },
+      q({
+        id: 'erp_stk_reorder',
+        text: 'How do you know it’s time to reorder an item?',
+        options: [
+          { id: 'system', label: 'The system shows what has dropped below its reorder level', score: 100 },
+          { id: 'check', label: 'Someone checks the shelves regularly', score: 45 },
+          { id: 'out', label: 'When it runs out', score: 10 },
+          { id: 'customer', label: 'When a customer asks for it', score: 0 },
+        ],
+        insight: {
+          gap: 'You reorder when things run out',
+          strength: 'Reordering happens before you run out',
+          why: 'Running out loses sales and customers; panic-buying costs more and fills the godown with the wrong things.',
+          fix: 'Reorder levels per item and location raise purchase requests automatically, before you run out.',
+          module: 'stock',
+        },
+      }),
+      {
+        id: 'erp_stk_dead',
+        kind: 'number',
+        text: 'Roughly what share of your stock hasn’t sold in the last 90 days?',
+        number: { min: 0, max: 100, unit: '% of stock', placeholder: 'e.g. 20', score: upTo([[10, 100], [20, 65], [35, 35]], 10) },
+        options: [{ id: 'unsure', label: 'No idea', score: 10 }],
+        insight: {
+          gap: 'Too much money is stuck in stock that doesn’t sell',
+          strength: 'Stock keeps moving',
+          why: 'Stock that doesn’t move is your cash sitting on a shelf — and it loses value every month.',
+          fix: 'Stock ageing and slow-moving reports show what to clear, and what not to buy again.',
+          module: 'stock',
+        },
+      },
+    ],
+  },
+  {
+    id: 'purchase',
+    title: 'Purchase & suppliers',
+    short: 'Purchase',
+    icon: 'Truck',
+    show: notIndustry('education'),
+    intro: 'How buying is ordered, checked and paid — the place where money leaks without anyone noticing.',
+    fields: [
+      q({
+        id: 'erp_pur_order',
+        text: 'How is a purchase ordered and approved?',
+        options: [
+          { id: 'system', label: 'A purchase order from the system, approved before it goes out', score: 100 },
+          { id: 'sheet', label: 'An order in Excel or on WhatsApp', score: 45 },
+          { id: 'phone', label: 'A phone call — nothing in writing', score: 15 },
+          { id: 'anyone', label: 'Whoever needs something just buys it', score: 5 },
+        ],
+        insight: {
+          gap: 'Buying happens without proper orders or approval',
+          strength: 'Purchases are ordered and approved properly',
+          why: 'Without orders and approvals, over-buying, wrong prices and the odd “arrangement” with a supplier go unnoticed.',
+          fix: 'Purchase request → approved purchase order → goods receipt → supplier bill, linked end to end.',
+          module: 'purchase',
+        },
+      }),
+      q({
+        id: 'erp_pur_match',
+        text: 'Before you pay a supplier, is the bill checked against the order and what actually arrived?',
+        options: [
+          { id: 'system', label: 'Always — the system matches them', score: 100 },
+          { id: 'manual', label: 'Sometimes, by hand', score: 40 },
+          { id: 'rarely', label: 'Rarely', score: 15 },
+          { id: 'never', label: 'Never', score: 0 },
+        ],
+        insight: {
+          gap: 'Supplier bills are paid without checking what arrived',
+          strength: 'Every supplier bill is checked before payment',
+          why: 'Paying for goods that never came, short deliveries or higher prices than agreed is one of the most common silent leaks.',
+          fix: 'Three-way match: a bill can only be paid when it agrees with the purchase order and the goods received.',
+          module: 'purchase',
+          hours: { manual: 4 },
+        },
+      }),
+    ],
+  },
+  {
+    id: 'production',
+    title: 'Production & projects',
+    short: 'Production',
+    icon: 'Factory',
+    show: inIndustry('manufacturing', 'construction', 'services', 'tech', 'other'),
+    intro: 'What each product, job or project really costs you — and whether work is planned, or found out halfway.',
+    fields: [
+      q({
+        id: 'erp_mfg_bom',
+        text: 'Is there a recipe (bill of materials) with a cost for each product you make?',
+        show: inIndustry('manufacturing', 'other'),
+        options: [
+          { id: 'system', label: 'Yes — in the system, with live costs', score: 100 },
+          { id: 'sheet', label: 'On paper or in Excel', score: 45 },
+          { id: 'heads', label: 'In experienced people’s heads', score: 15 },
+          { id: 'no', label: 'No', score: 5 },
+        ],
+        insight: {
+          gap: 'Product recipes and costs aren’t written down',
+          strength: 'Every product has a recipe and a real cost',
+          why: 'Without a costed recipe you can’t price with confidence, and raw-material use can’t be checked.',
+          fix: 'Bills of materials with live costs; work orders use up raw material and add finished goods automatically.',
+          module: 'manufacturing',
+        },
+      }),
+      q({
+        id: 'erp_prj_cost',
+        text: 'Do you know the real profit of each job or project?',
+        options: [
+          { id: 'yes', label: 'Yes — time and materials are booked to each one', score: 100 },
+          { id: 'end', label: 'We estimate it at the end', score: 40 },
+          { id: 'total', label: 'We only see the total profit for the year', score: 15 },
+          { id: 'no', label: 'No', score: 5 },
+        ],
+        insight: {
+          gap: 'You don’t know which jobs make money',
+          strength: 'Every job’s profit is known',
+          why: 'Some jobs quietly lose money every time — and without costs per job, you keep quoting them the same way.',
+          fix: 'Every hour, material and expense booked to the project or job — profit per job, live, against the budget.',
+          module: 'projects',
+        },
+      }),
+    ],
+  },
+  {
+    id: 'people',
+    title: 'People & payroll',
+    short: 'Payroll',
+    icon: 'Users',
+    show: (c) => c.profile?.teamSize !== 'solo',
+    intro: 'Attendance and salaries — monthly work that can run itself.',
+    fields: [
+      {
+        id: 'erp_hr_payroll',
+        kind: 'number',
+        text: 'How many hours does running payroll take each month?',
+        hint: 'From collecting attendance to the last salary slip.',
+        number: { min: 0, max: 500, unit: 'hours a month', placeholder: 'e.g. 8', score: upTo([[2, 100], [8, 60], [20, 25]], 10) },
+        options: [{ id: 'outside', label: 'It’s outsourced — we don’t see the details', score: 40 }],
+        insight: {
+          gap: 'Payroll is a monthly spreadsheet job',
+          strength: 'Payroll runs itself',
+          why: 'Hand-made payroll takes days, and PF, ESI, PT or TDS mistakes turn into penalties.',
+          fix: 'Salary slips with PF, ESI, PT and TDS calculated automatically and sent to each employee.',
+          module: 'hr',
+          hoursFromValue: true,
+          hours: { outside: 2 },
+        },
+      },
+      q({
+        id: 'erp_hr_attend',
+        text: 'How is attendance recorded?',
+        options: [
+          { id: 'linked', label: 'A biometric device or app that feeds payroll', score: 100 },
+          { id: 'bio', label: 'A biometric device, but payroll is done separately', score: 50 },
+          { id: 'register', label: 'A register or Excel', score: 20 },
+          { id: 'none', label: 'It isn’t really recorded', score: 5 },
+        ],
+        insight: {
+          gap: 'Attendance and payroll don’t talk to each other',
+          strength: 'Attendance flows into payroll',
+          why: 'Copying attendance into payroll by hand takes time and leads to salary mistakes and disputes.',
+          fix: 'Attendance from biometric devices or mobile check-in flows straight into payroll, with leave applied.',
+          module: 'hr',
+          hours: { bio: 3, register: 6, none: 2 },
+        },
+      }),
+    ],
+  },
+  {
+    id: 'control',
+    title: 'Control & reports',
+    short: 'Control',
+    icon: 'Gauge',
+    intro: 'Whether you can see and control the business from anywhere — or it only runs when you are in the room.',
+    fields: [
+      q({
+        id: 'erp_ctl_phone',
+        text: 'Can you see today’s sales, cash and stock on your phone — without asking anyone?',
+        options: [
+          { id: 'live', label: 'Yes — a live dashboard', score: 100 },
+          { id: 'ask', label: 'No — I ask someone to send it', score: 40 },
+          { id: 'month', label: 'Only at month-end', score: 15 },
+          { id: 'no', label: 'Not at all', score: 5 },
+        ],
+        insight: {
+          gap: 'You can’t see the business without asking someone',
+          strength: 'You see the business live, from anywhere',
+          why: 'When the owner has to ask for the numbers, problems are found late — and the business can’t run without you nearby.',
+          fix: 'A live dashboard of sales, cash, stock and money owed — on your phone, wherever you are.',
+          module: 'dashboards',
+        },
+      }),
+      {
+        id: 'erp_ctl_tools',
+        kind: 'number',
+        text: 'How many separate apps, software and sheets does a normal day need?',
+        hint: 'Count billing, accounts, stock sheets, WhatsApp groups for orders, and so on.',
+        number: { min: 1, max: 100, unit: 'tools', placeholder: 'e.g. 5', score: upTo([[1, 100], [3, 60], [6, 25]], 5) },
+        insight: {
+          gap: 'The business runs on too many separate tools',
+          strength: 'One system, one version of the truth',
+          why: 'Every extra tool means copying data between them, numbers that never agree, and knowledge locked in one person’s sheet.',
+          fix: 'Accounts, sales, stock, purchase and people in one system — one version of the truth.',
+          module: 'dashboards',
+        },
+      },
+      q({
+        id: 'erp_ctl_access',
+        text: 'Can you control who sees and changes prices, costs and bills — with a record of every change?',
+        options: [
+          { id: 'yes', label: 'Yes — each person has their own access, and every change is recorded', score: 100 },
+          { id: 'partly', label: 'Partly', score: 45 },
+          { id: 'all', label: 'No — everyone can see and change everything', score: 10 },
+          { id: 'shared', label: 'We all use one shared login', score: 0 },
+        ],
+        insight: {
+          gap: 'Anyone can see or change anything — with no record',
+          strength: 'Access is controlled and every change is recorded',
+          why: 'Without permissions and an audit trail, a deleted bill or a changed price is impossible to trace — mistakes and fraud look the same.',
+          fix: 'Role-based permissions, approval rules and a full audit trail of who changed what, and when.',
+          module: 'control',
+        },
+      }),
+      q({
+        id: 'erp_ctl_when',
+        text: 'When would you like to fix these?',
+        hint: 'Not scored — it helps us plan your demo.',
+        options: [
+          { id: 'now', label: 'As soon as possible' },
+          { id: 'soon', label: 'In the next 1–3 months' },
+          { id: 'later', label: 'In 3–6 months' },
+          { id: 'exploring', label: 'Just exploring for now' },
+        ],
+      }),
+    ],
+  },
+];
+
+// ── Results ─────────────────────────────────────────────────
+
+export const ERP_TARGET = 70;
+
+export type ErpStatus = 'good' | 'push' | 'gap';
+
+export interface ErpInsight {
+  id: string;
+  area: string;
+  areaTitle: string;
+  kind: 'gap' | 'watch' | 'strength';
+  title: string;
+  answer: string;
+  why: string;
+  fix: string;
+  module: string;
+  score: number;
+  hours: number;
+}
+
+export interface ErpArea {
+  id: string;
+  title: string;
+  short: string;
+  icon: string;
+  score: number | null;
+  status: ErpStatus | null;
+  gaps: ErpInsight[];
+  strengths: ErpInsight[];
+}
+
+export interface ErpResults {
+  overall: number | null;
+  verdict: { title: string; body: string; tone: 'good' | 'warn' | 'gap' } | null;
+  areas: ErpArea[];
+  /** The gaps that cost most, worst first. */
+  topGaps: ErpInsight[];
+  gapCount: number;
+  /** Rough hours a month the gaps take (work ERPNext does for you). */
+  hours: number;
+  phase1: string[];
+  phase2: string[];
+  current?: { label: string; note: string };
+  size: { users?: number; sites?: number; label?: string; weeks?: string };
+  when?: string;
+  points: string[];
+  answered: number;
+  asked: number;
+}
+
+const CURRENT_NOTES: Record<string, string> = {
+  tally: 'Tally keeps good books — but orders, stock across locations, purchase approvals, payroll and live dashboards sit outside it, in sheets and WhatsApp. That is where most of your gaps are.',
+  busy: 'Busy or Marg handle billing and stock basics, but approvals, branches, payroll and live reports for the owner usually live outside them.',
+  zoho: 'Zoho Books is good for accounts. Manufacturing, multi-location stock, payroll and controls are where businesses outgrow it.',
+  quickbooks: 'QuickBooks handles the accounts, but Indian GST depth, stock, manufacturing and payroll need other tools around it.',
+  excel: 'Sheets and notebooks work when you are small — but nothing is live, nothing is controlled, and everything is typed more than once.',
+  outside: 'When the books are done outside, you see your numbers late and only through your CA — the business runs blind in between.',
+  erp: 'If your ERP leaves these gaps, it is usually set up wrong or has been outgrown. Both can be fixed.',
+};
+
+const statusOf = (score: number): ErpStatus => (score >= ERP_TARGET ? 'good' : score >= 50 ? 'push' : 'gap');
+
+export function computeErp(answers: FormAnswers, profile?: Profile): ErpResults {
+  const ctx: FormCtx = { answers, stage1: {}, profile };
+  const sections = visibleSections(ERP_SECTIONS, ctx);
+
+  const areas: ErpArea[] = [];
+  const all: ErpInsight[] = [];
+  let hours = 0;
+  for (const sec of sections) {
+    if (sec.id === 'setup') continue;
+    const insights: ErpInsight[] = [];
+    for (const f of visibleFields(sec, ctx)) {
+      const a = answers[f.id];
+      if (!a || a.skipped || !f.insight) continue;
+      const score = fieldScore(f, a);
+      if (score === null) continue;
+      const optId = a.selected[0];
+      const h = f.insight.hoursFromValue && typeof a.value === 'number' ? Math.round(a.value) : (optId && f.insight.hours?.[optId]) || 0;
+      hours += h;
+      insights.push({
+        id: f.id,
+        area: sec.id,
+        areaTitle: sec.title,
+        kind: score >= ERP_TARGET ? 'strength' : score < 45 ? 'gap' : 'watch',
+        title: score >= ERP_TARGET ? f.insight.strength : f.insight.gap,
+        answer: fieldAnswerLabel(f, a),
+        why: f.insight.why,
+        fix: f.insight.fix,
+        module: f.insight.module,
+        score,
+        hours: h,
+      });
+    }
+    all.push(...insights);
+    const score = insights.length ? Math.round(insights.reduce((n, i) => n + i.score, 0) / insights.length) : null;
+    areas.push({
+      id: sec.id,
+      title: sec.title,
+      short: sec.short ?? sec.title,
+      icon: sec.icon,
+      score,
+      status: score === null ? null : statusOf(score),
+      gaps: insights.filter((i) => i.kind !== 'strength').sort((x, y) => x.score - y.score),
+      strengths: insights.filter((i) => i.kind === 'strength'),
+    });
+  }
+
+  const scored = areas.filter((a) => a.score !== null);
+  const overall = scored.length ? Math.round(scored.reduce((n, a) => n + a.score!, 0) / scored.length) : null;
+  const gaps = all.filter((i) => i.kind !== 'strength').sort((x, y) => x.score - y.score || y.hours - x.hours);
+  const verdict: ErpResults['verdict'] =
+    overall === null
+      ? null
+      : overall >= 75
+        ? { title: 'Your setup is in good shape', body: 'Most of the business already runs on proper systems. The few gaps below are worth closing as you grow — an ERP would pull them together.', tone: 'good' }
+        : overall >= 50
+          ? { title: 'Real gaps your current setup leaves open', body: 'Parts of the business run well, but several jobs still depend on typing, chasing and remembering. These are exactly what an ERP takes over.', tone: 'warn' }
+          : { title: 'Your current system is holding you back', body: 'Much of the business runs on re-typing, phone calls and memory. An ERP would take a lot of daily work off your team — and give you the numbers you are missing.', tone: 'gap' };
+
+  // ── The ERPNext plan: modules weighted by how big their gaps are ──
+  const weight = new Map<string, number>();
+  for (const g of gaps) weight.set(g.module, (weight.get(g.module) ?? 0) + (100 - g.score));
+  const sitesForPlan = num(answers, 'erp_sites');
+  if (sitesForPlan !== undefined && sitesForPlan > 1) weight.set('multi', (weight.get('multi') ?? 0) + 100);
+  const ranked = [...weight.entries()].sort((a, b) => b[1] - a[1]).map(([m]) => m);
+  const coreGaps = ranked.filter((m) => CORE.includes(m));
+  const phase1Ids = new Set(['accounts', ...coreGaps]);
+  for (const m of ranked) if (!CORE.includes(m) && (weight.get(m) ?? 0) >= 120 && phase1Ids.size < 5) phase1Ids.add(m);
+  const phase1 = [...phase1Ids].map((m) => MODULES[m]);
+  const phase2 = ranked.filter((m) => !phase1Ids.has(m)).map((m) => MODULES[m]);
+
+  const currentId = picked(answers, 'erp_current')[0];
+  const currentOther = answers.erp_current?.other?.trim();
+  // An id we don't know (an edited share link, an old save) falls back to their own words, or nothing.
+  const currentOpt = currentId ? ERP_SECTIONS.flatMap((s) => s.fields).find((f) => f.id === 'erp_current')?.options?.find((o) => o.id === currentId) : undefined;
+  const current = currentOpt
+    ? { label: currentOpt.label, note: CURRENT_NOTES[currentOpt.id] ?? '' }
+    : currentOther
+      ? { label: currentOther, note: '' }
+      : undefined;
+
+  const users = num(answers, 'erp_users');
+  const sites = num(answers, 'erp_sites');
+  let sizeLabel: string | undefined;
+  let weeks: string | undefined;
+  if (users !== undefined || sites !== undefined) {
+    const big = (users ?? 0) > 25 || (sites ?? 1) > 5;
+    const mid = (users ?? 0) > 5 || (sites ?? 1) > 1;
+    sizeLabel = big ? 'A larger, multi-site setup' : mid ? 'A mid-size setup' : 'A small, quick setup';
+    weeks = big ? 'about 3–4 months' : mid ? 'about 6–10 weeks' : 'about 3–5 weeks';
+  }
+  const whenId = picked(answers, 'erp_ctl_when')[0];
+  const when = ERP_SECTIONS.flatMap((s) => s.fields).find((f) => f.id === 'erp_ctl_when')?.options?.find((o) => o.id === whenId)?.label;
+
+  // ── For the team ──
+  const points: string[] = [];
+  if (overall !== null) points.push(`System health ${overall}/100 — ${verdict!.title.toLowerCase()}${current ? `; today on ${current.label}` : ''}`);
+  if (gaps.length) points.push(`Top gaps: ${gaps.slice(0, 3).map((g) => g.title.toLowerCase()).join('; ')}`);
+  if (phase1.length) points.push(`Phase 1: ${phase1.join(', ')}${phase2.length ? ` · later: ${phase2.join(', ')}` : ''}`);
+  const size = [users !== undefined && `${users} users`, sites !== undefined && `${sites} location${sites === 1 ? '' : 's'}`].filter(Boolean);
+  if (size.length || hours) points.push([size.length && `Size: ${size.join(', ')}`, hours && `≈ ${hours} hours a month in work ERPNext would do`].filter(Boolean).join(' · '));
+  if (when) points.push(`Wants to start: ${when.toLowerCase()}`);
+
+  const fields = sections.flatMap((s) => visibleFields(s, ctx));
+  const answered = fields.filter((f) => {
+    const a = answers[f.id];
+    return a && !a.skipped && (typeof a.value === 'number' || a.selected.length > 0 || !!a.other?.trim());
+  }).length;
+
+  return {
+    overall,
+    verdict,
+    areas,
+    topGaps: gaps.slice(0, 6),
+    gapCount: gaps.length,
+    hours,
+    phase1,
+    phase2,
+    current,
+    size: { users, sites, label: sizeLabel, weeks },
+    when,
+    points,
+    answered,
+    asked: fields.length,
+  };
+}
+
+
+// ── The report, like Stage 1's ──────────────────────────────
+
+/** For each question: the first step (doable this week), the next steps, how big the job is, who helps. */
+const ERP_STEPS: Record<string, { first: string; steps: string[]; effort: Effort; services?: ServiceId[] }> = {
+  erp_acc_entry: {
+    first: 'Count how many places one bill gets typed today — billing, accounts, Excel. Each one is work an ERP removes.',
+    steps: ['Ask your accountant how many hours a month go into re-entering bills.', 'See a demo where one invoice updates sales, GST and accounts together.'],
+    effort: 'big',
+  },
+  erp_acc_gst: {
+    first: 'Ask your CA which part of GST takes longest — usually matching purchase bills with GSTR-2B.',
+    steps: ['Keep every bill with its GSTIN in one place from this month.', 'Make e-invoices and e-way bills from the bill itself, not a separate portal step.'],
+    effort: 'medium',
+  },
+  erp_acc_close: {
+    first: 'Fix a day — say the 5th — when last month’s profit must be ready, and hold to it.',
+    steps: ['Record bills and expenses every week instead of at month-end.', 'Move to a system where profit is live, not prepared.'],
+    effort: 'medium',
+    services: ['erp', 'ai'],
+  },
+  erp_sal_flow: {
+    first: 'Trace one order this week from quote to payment — note every place it’s typed, waited on or lost.',
+    steps: ['Use one numbered quote and order format for everyone.', 'Make each document from the one before it, in one system.'],
+    effort: 'big',
+  },
+  erp_sal_due: {
+    first: 'List everyone who owes you, with how many days overdue — and call the top five this week.',
+    steps: ['Send a reminder 3 days before and 1 day after each due date.', 'Stop new credit orders for customers more than 30 days overdue.'],
+    effort: 'quick',
+    services: ['erp', 'ai'],
+  },
+  erp_sal_late: {
+    first: 'Set a credit limit and payment terms for your 10 biggest credit customers.',
+    steps: ['Send statements every Monday to everyone overdue.', 'Offer a small discount for payment within 7 days.'],
+    effort: 'quick',
+  },
+  erp_stk_off: {
+    first: 'Count your 20 fastest-moving items this week and fix every difference you find.',
+    steps: ['Record every stock movement — returns and transfers too — the same day.', 'Count a few items every week instead of everything once a year.'],
+    effort: 'medium',
+  },
+  erp_stk_reorder: {
+    first: 'Write a minimum stock level for your top 30 items, and check them every Monday.',
+    steps: ['Reorder when an item reaches its minimum — not when it runs out.', 'Let the system raise the purchase request automatically.'],
+    effort: 'quick',
+  },
+  erp_stk_dead: {
+    first: 'List items with no sale in 90 days and plan a clearance offer this month.',
+    steps: ['Stop reordering anything that hasn’t sold in 90 days.', 'Review slow stock every month, before it becomes dead stock.'],
+    effort: 'quick',
+  },
+  erp_pur_order: {
+    first: 'Make a written, numbered purchase order compulsory for every purchase above ₹10,000.',
+    steps: ['Name who can approve purchases, and up to what amount.', 'Move orders and approvals into the system, so nothing is bought off the record.'],
+    effort: 'medium',
+  },
+  erp_pur_match: {
+    first: 'For the next 10 supplier bills, check quantity and price against the order and the delivery before paying.',
+    steps: ['Pay only the bills that match; send the rest back.', 'Let the system do this three-way match automatically.'],
+    effort: 'quick',
+  },
+  erp_mfg_bom: {
+    first: 'Write down the recipe and cost of your three best-selling products.',
+    steps: ['Update the costs when raw-material prices change.', 'Issue material for each job from the recipe.'],
+    effort: 'medium',
+  },
+  erp_prj_cost: {
+    first: 'Take your last five jobs and work out their real profit, including people’s time.',
+    steps: ['Book hours and materials to each job as they happen.', 'Quote new jobs from the real costs of past ones.'],
+    effort: 'medium',
+  },
+  erp_hr_payroll: {
+    first: 'List each step of your payroll and how long it takes — attendance and PF/ESI usually take longest.',
+    steps: ['Keep salary structures, PF and ESI details in one place.', 'Run payroll from attendance automatically, with slips sent to each person.'],
+    effort: 'medium',
+  },
+  erp_hr_attend: {
+    first: 'Make one attendance record the only source for payroll — no separate copies.',
+    steps: ['Link the biometric device or a mobile check-in to payroll.', 'Approve leave in the same place, so payroll sees it.'],
+    effort: 'medium',
+  },
+  erp_ctl_phone: {
+    first: 'Pick the five numbers you want every day — sales, cash, stock, owed to you, owed by you.',
+    steps: ['Have them sent to you daily until you have a live dashboard.', 'Move to a system that shows them live on your phone.'],
+    effort: 'medium',
+    services: ['erp', 'ai'],
+  },
+  erp_ctl_tools: {
+    first: 'List every app, sheet and WhatsApp group the business runs on, and what each one is for.',
+    steps: ['Retire any sheet that only copies data from another one.', 'Bring billing, stock and accounts into one system first.'],
+    effort: 'big',
+  },
+  erp_ctl_access: {
+    first: 'Give each person their own login, and stop sharing one password.',
+    steps: ['Decide who may change prices, give discounts or delete bills.', 'Switch on an audit trail, so every change has a name and a time.'],
+    effort: 'quick',
+  },
+};
+
+const ROOT_NOTES: Record<string, string> = {
+  accounts: 'When the books lag behind the business, every decision is made on last month’s guesswork.',
+  sales: 'When orders, bills and payments don’t connect, money leaks through missed follow-ups and late billing.',
+  stock: 'When stock in the books is wrong, cash gets stuck on the shelf while sales are lost to empty racks.',
+  purchase: 'Unchecked buying is where money leaks without anyone noticing.',
+  production: 'Without real costs per product or job, some work quietly loses money every time.',
+  people: 'Hand-made payroll and attendance eat days every month and lead to disputes.',
+  control: 'When the owner can’t see or control the numbers, the business only runs when they are in the room.',
+};
+
+/** The ERP check as a Stage 1-style report, plus what only the ERP check has (its ERPNext plan). */
+export function erpReport(answers: FormAnswers, profile?: Profile, businessName = ''): { results: Results; erp: ErpResults } {
+  const erp = computeErp(answers, profile);
+  const areas: KitArea[] = erp.areas.map((a) => ({ id: a.id, title: a.title, short: a.short, icon: a.icon, rootNote: ROOT_NOTES[a.id] ?? '' }));
+  const findings: KitFinding[] = erp.areas.flatMap((a) =>
+    [...a.gaps, ...a.strengths].map((i) => {
+      const next = ERP_STEPS[i.id];
+      return {
+        questionId: i.id,
+        area: i.area,
+        score: i.score,
+        answerLabel: i.answer,
+        strength: i.title,
+        gap: i.title,
+        why: i.why,
+        fix: next?.first ?? i.fix,
+        steps: next?.steps ?? [],
+        effort: next?.effort ?? 'medium',
+        solution: { services: next?.services ?? ['erp'], text: `With ERPNext: ${i.fix}` },
+      };
+    }),
+  );
+  const industryId = profile?.industry ?? (picked(answers, 'erp_industry')[0] as IndustryId | undefined);
+  const industryLabel = INDUSTRIES.find((i) => i.id === industryId)?.label ?? 'Not specified';
+
+  // "Your numbers": the figures they gave, and the time the gaps take.
+  const numbers: NumberFact[] = [];
+  if (erp.hours > 0) {
+    numbers.push({
+      id: 'erp_hours',
+      icon: 'Clock',
+      label: 'Work an ERP would do for you',
+      big: `≈ ${erp.hours} hours a month`,
+      note: `About ${Math.round((erp.hours / 8) * 10) / 10} full working days every month go into typing, matching and chasing that ERPNext does on its own.`,
+      tone: erp.hours >= 20 ? 'gap' : 'warn',
+      section: 'technology',
+    });
+  }
+  const fig = (id: string) => num(answers, id);
+  const late = fig('erp_sal_late');
+  if (late !== undefined) numbers.push({ id: 'erp_late', icon: 'CalendarClock', label: 'Credit sales paid late', big: `${late}%`, note: 'Every late payment is your money funding someone else’s business.', tone: late <= 10 ? 'good' : late <= 25 ? 'warn' : 'gap', section: 'finance' });
+  const off = fig('erp_stk_off');
+  if (off !== undefined) numbers.push({ id: 'erp_off', icon: 'Boxes', label: 'Stock items that don’t match the books', big: `${off}%`, note: off <= 2 ? 'Books and shelves agree — rare and valuable.' : 'Each mismatch is a sale lost, a wrong reorder, or a loss nobody saw.', tone: off <= 2 ? 'good' : off <= 5 ? 'warn' : 'gap', section: 'operations' });
+  const dead = fig('erp_stk_dead');
+  if (dead !== undefined) numbers.push({ id: 'erp_dead', icon: 'PiggyBank', label: 'Stock unsold for 90 days', big: `${dead}%`, note: 'That share of your stock is cash sitting on a shelf.', tone: dead <= 10 ? 'good' : dead <= 20 ? 'warn' : 'gap', section: 'finance' });
+  const tools = fig('erp_ctl_tools');
+  if (tools !== undefined) numbers.push({ id: 'erp_tools', icon: 'Workflow', label: 'Tools a normal day needs', big: String(tools), note: tools <= 1 ? 'One system — one version of the truth.' : 'Every extra tool means copying data between them, and numbers that never agree.', tone: tools <= 1 ? 'good' : tools <= 3 ? 'warn' : 'gap', section: 'technology' });
+
+  const visible = visibleSections(ERP_SECTIONS, { answers, stage1: {}, profile }).flatMap((s) => visibleFields(s, { answers, stage1: {}, profile }));
+  const results = buildResults({
+    businessName,
+    target: ERP_TARGET,
+    levelLabel: 'well-run',
+    industryLabel,
+    teamLabel: 'Not specified',
+    areas,
+    findings,
+    asked: erp.asked,
+    answered: erp.answered,
+    skipped: visible.filter((f) => answers[f.id]?.skipped).length,
+    numbers,
+    scoreLabel: 'System',
+    scoreTitle: 'System health',
+    // End on what it is worth: the time the gaps take, from their own answers.
+    opportunity:
+      erp.hours > 0
+        ? {
+            tone: 'good',
+            icon: 'Clock',
+            label: 'Time back every month',
+            big: `≈ ${erp.hours} hours`,
+            headline: 'Work ERPNext would do for your team',
+            detail: `About ${Math.round((erp.hours / 8) * 10) / 10} working days a month go into typing, matching and chasing.${erp.phase1.length ? ` Phase 1 — ${erp.phase1.join(', ')} — takes most of it off their hands.` : ''}`,
+            talk: 'End on the time: their own answers add up to this many hours a month. Offer a demo on their data.',
+          }
+        : undefined,
+  });
+  return { results, erp };
+}
+
+/**
+ * The answers saved (and put in share links): with the Stage 1 industry when it came from
+ * there, so the same questions show — and the same report builds — wherever it is opened.
+ */
+export function erpToSave(answers: FormAnswers, profile?: Profile): FormAnswers {
+  return profile?.industry && !answers.erp_industry ? { ...answers, 'p.industry': { selected: [profile.industry] } } : answers;
+}
+
+/** The profile a saved ERP check was taken with (see erpToSave). */
+export function erpProfileFrom(answers: FormAnswers): Profile {
+  const id = answers['p.industry']?.selected[0];
+  return { businessName: '', goals: [], ...(INDUSTRIES.some((i) => i.id === id) ? { industry: id as IndustryId } : {}) };
+}

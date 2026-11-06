@@ -13,6 +13,7 @@ import { KeyPoints } from './KeyPoints';
 import { RealGap } from './RealGap';
 import { ScoreHero } from './ScoreHero';
 import { StatStrip } from './StatStrip';
+import { YourNumbers } from './YourNumbers';
 
 const PRINT_FOOTNOTE =
   'This check is a guide based on your answers, not an audit. Targets are guide levels for a business at your stage, not industry statistics.';
@@ -31,6 +32,9 @@ export function ReportBody({
   compact,
   defaultExpanded = false,
   onGetHelp,
+  extra,
+  extraAfterPlan,
+  teaser = 'Key points, the real gap behind your biggest headache, strengths and gaps, your 7 / 30 / 90-day plan — and how we can help.',
 }: {
   results: Results;
   /** Always visible below the report (the client's callback form). */
@@ -42,6 +46,12 @@ export function ReportBody({
   defaultExpanded?: boolean;
   /** "Get help with …" in an area's panel. */
   onGetHelp?: () => void;
+  /** A check's own sections inside the full report (Stage 2's money, the ERP plan). */
+  extra?: React.ReactNode;
+  /** The line under "See your full report" (what's inside). */
+  teaser?: string;
+  /** A check's own section after the 7/30/90-day plan (the ERPNext plan). */
+  extraAfterPlan?: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [openArea, setOpenArea] = useState<SectionId | null>(null);
@@ -53,7 +63,13 @@ export function ReportBody({
     <div className={`${compact ? 'mt-6' : 'mt-10 sm:mt-12'} ${gap} print:mt-6 print:space-y-8`}>
       {/* ── First view ── */}
       <ScoreHero results={results} />
-      <AreaScores sections={results.sections} target={results.target} levelLabel={results.levelLabel} onOpenArea={setOpenArea} />
+      <AreaScores
+        sections={results.sections}
+        target={results.target}
+        levelLabel={results.levelLabel}
+        targetLabel={results.labels?.target}
+        onOpenArea={setOpenArea}
+      />
 
       <div className="no-print flex flex-col items-center text-center">
         <button
@@ -69,7 +85,7 @@ export function ReportBody({
         </button>
         {!expanded && (
           <p className="mt-2.5 max-w-md text-[13.5px] leading-relaxed text-muted">
-            Key points, the real gap behind your biggest headache, strengths and gaps, your 7 / 30 / 90-day plan — and how we can help.
+            {teaser}
           </p>
         )}
       </div>
@@ -82,9 +98,12 @@ export function ReportBody({
           {/* On paper the disclaimer sits under the numbers it qualifies. */}
           <p className="print-only text-[9pt] leading-snug text-muted">{PRINT_FOOTNOTE}</p>
         </div>
-        {results.realGap && <RealGap gap={results.realGap} />}
+        <YourNumbers facts={results.numbers} />
+        {extra}
+        {results.realGap && <RealGap gap={results.realGap} targetLabel={results.labels?.target} />}
         <Insights strengths={results.strengths} gaps={results.gaps} stats={results.stats} />
         <ActionPlan plan={results.actionPlan} businessName={results.businessName} />
+        {extraAfterPlan}
         <HowWeHelp services={results.services} businessName={results.businessName} onGetHelp={onGetHelp} />
         <AreaNotes sections={results.sections} openFirst={results.realGap?.actual.id} />
       </div>
